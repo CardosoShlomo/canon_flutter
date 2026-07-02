@@ -83,4 +83,83 @@ void main() {
     final context = tester.element(find.text('b:two'));
     expect(EntityScope.idOf<String>(context), 'b');
   });
+
+  testWidgets('StoreBuilder: list build re-runs ONLY on add/remove/reorder',
+      (tester) async {
+    builds.clear();
+    var listBuilds = 0;
+    final ledger = Ledger();
+    final store = ledger.store(const Products());
+    ledger.dispatch(const ProductsMsg([
+      Product(id: 'a', title: 'one'),
+      Product(id: 'b', title: 'two'),
+    ]));
+
+    await tester.pumpWidget(StoreBuilder(store, (context, ids) {
+      listBuilds++;
+      return Column(
+        children: [
+          for (final id in ids)
+            EntityScope(store, id, child: const ProductCard()),
+        ],
+      );
+    }));
+    expect(listBuilds, 1);
+
+    // Value update → the LIST build does not re-run; one item rebuilds.
+    ledger.dispatch(const TitleChangedMsg('a', 'uno'));
+    await tester.pump();
+    expect(listBuilds, 1);
+    expect(builds, {'a': 2, 'b': 1});
+    expect(find.text('a:uno'), findsOneWidget);
+
+    // Add → the list build re-runs; existing items do NOT rebuild.
+    ledger.dispatch(const ProductsMsg([
+      Product(id: 'a', title: 'uno'),
+      Product(id: 'b', title: 'two'),
+      Product(id: 'c', title: 'three'),
+    ]));
+    await tester.pump();
+    expect(listBuilds, 2);
+    expect(find.text('c:three'), findsOneWidget);
+    expect(builds['b'], 1); // untouched neighbor never rebuilt
+  });
+
+  testWidgets('store.of(context): reactive ids read through the StoreHost',
+      (tester) async {
+    builds.clear();
+    var listBuilds = 0;
+    final ledger = Ledger();
+    final store = ledger.store(const Products());
+    ledger.dispatch(const ProductsMsg([Product(id: 'a', title: 'one')]));
+
+    await tester.pumpWidget(StoreHost(
+      child: Builder(builder: (context) {
+        final ids = store.of(context);
+        listBuilds++;
+        return Column(
+          children: [
+            for (final id in ids)
+              EntityScope(store, id, child: const ProductCard()),
+          ],
+        );
+      }),
+    ));
+    expect(listBuilds, 1);
+
+    // Value change → the ids read does NOT rebuild; the item does.
+    ledger.dispatch(const TitleChangedMsg('a', 'uno'));
+    await tester.pump();
+    expect(listBuilds, 1);
+    expect(find.text('a:uno'), findsOneWidget);
+
+    // Add → the ids read rebuilds.
+    ledger.dispatch(const ProductsMsg([
+      Product(id: 'a', title: 'uno'),
+      Product(id: 'b', title: 'two'),
+    ]));
+    await tester.pump();
+    expect(listBuilds, 2);
+    expect(find.text('b:two'), findsOneWidget);
+  });
 }

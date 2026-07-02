@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:canon/canon.dart';
 
+import 'entity_scope.dart';
 import 'history_engine.dart'
     if (dart.library.js_interop) 'history_engine_web.dart';
 import 'scopes.dart';
@@ -95,12 +96,14 @@ final class NavDelegate extends RouterDelegate<Object>
     // stale — show the consumer's root widget, which reads `Screen.root.kind`.
     if (_graph.rootKind != null) return _graph.bootWidget as Widget;
     final visited = _graph.visitedTrunks;
-    return ViewModel(
-      snapshot: _graph.viewSnapshot(),
-      child: PlacementModel(
-        chain: _graph.currentChain.toSet(),
-        top: _graph.current,
-        child: _buildStack(visited),
+    return StoreHost(
+      child: ViewModel(
+        snapshot: _graph.viewSnapshot(),
+        child: PlacementModel(
+          chain: _graph.currentChain.toSet(),
+          top: _graph.current,
+          child: _buildStack(visited),
+        ),
       ),
     );
   }
