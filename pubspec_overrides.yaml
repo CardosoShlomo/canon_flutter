@@ -1,0 +1,10 @@
+# Local dev: path-resolve the unpublished family.
+dependency_overrides:
+  canon:
+    path: ../canon
+  canon_codec:
+    path: ../canon_codec
+  ledger:
+    path: ../ledger
+  identifiable:
+    path: ../identifiable
