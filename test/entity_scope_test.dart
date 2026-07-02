@@ -65,7 +65,7 @@ void main() {
     await tester.pumpWidget(Column(
       children: [
         for (final id in store.entities.keys)
-          EntityScope(store, id, key: ValueKey(id), child: const ProductCard()),
+          EntityScope(store, id, child: const ProductCard()),
       ],
     ));
     expect(find.text('a:one'), findsOneWidget);

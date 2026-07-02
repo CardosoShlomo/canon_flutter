@@ -17,7 +17,10 @@ import 'package:canon/canon.dart';
 /// - **Identity-stable keys**: key list items by the entity id
 ///   (`key: ValueKey(id)`), never by index.
 final class EntityScope<K, E extends Identifiable<K>> extends StatefulWidget {
-  const EntityScope(this.store, this.id, {super.key, required this.child});
+  /// Self-keys by the entity id — identity-stable across index shifts, so the
+  /// list may omit `key:` entirely.
+  EntityScope(this.store, this.id, {Key? key, required this.child})
+      : super(key: key ?? ValueKey(id));
 
   /// The store the entity lives in (any message type — read-only here).
   final StoreMemory<K, E, Msg> store;
