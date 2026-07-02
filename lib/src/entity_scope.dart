@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:canon/canon.dart';
@@ -124,13 +123,11 @@ final class StoreBuilder<K, E extends Identifiable<K>> extends StatefulWidget {
 
 final class _StoreBuilderState<K, E extends Identifiable<K>>
     extends State<StoreBuilder<K, E>> {
-  StreamSubscription<K>? _sub;
-  late List<K> _ids;
+  StreamSubscription<void>? _sub;
 
   @override
   void initState() {
     super.initState();
-    _ids = [...widget.store.entities.keys];
     _listen();
   }
 
@@ -139,16 +136,13 @@ final class _StoreBuilderState<K, E extends Identifiable<K>>
     super.didUpdateWidget(old);
     if (old.store != widget.store) {
       _sub?.cancel();
-      _ids = [...widget.store.entities.keys];
       _listen();
     }
   }
 
-  void _listen() => _sub = widget.store.changes.listen((_) {
-        final next = [...widget.store.entities.keys];
-        if (listEquals(next, _ids)) return; // value-only change → items handle it
-        setState(() => _ids = next);
-      });
+  // The engine decides structurally (its `structure` feed) — no diffing here.
+  void _listen() =>
+      _sub = widget.store.structure.listen((_) => setState(() {}));
 
   @override
   void dispose() {
@@ -157,7 +151,8 @@ final class _StoreBuilderState<K, E extends Identifiable<K>>
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _ids);
+  Widget build(BuildContext context) =>
+      widget.builder(context, [...widget.store.entities.keys]);
 }
 
 /// Reactive ids read, no builder: `final ids = adsStore.of(context);` —
@@ -194,17 +189,14 @@ final class _StoreHostState extends State<StoreHost> {
 
   List<Object?> _watch<K, E extends Identifiable<K>>(
       StoreMemory<K, E, Msg> store) {
+    // The engine decides structurally (its `structure` feed) — no diffing here.
     final w = _watches[store] ??= () {
       _versions[store] = 0;
-      var ids = <Object?>[...store.entities.keys];
-      late final _StoreWatch watch;
-      final sub = store.changes.listen((_) {
-        final next = <Object?>[...store.entities.keys];
-        if (listEquals(next, watch.ids)) return;
-        watch.ids = next;
+      final sub = store.structure.listen((_) {
+        _watches[store]!.ids = <Object?>[...store.entities.keys];
         setState(() => _versions[store] = _versions[store]! + 1);
       });
-      return watch = _StoreWatch(ids, sub);
+      return _StoreWatch(<Object?>[...store.entities.keys], sub);
     }();
     return w.ids;
   }
