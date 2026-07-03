@@ -162,21 +162,13 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
   /// The key SEQUENCE, reactively — rebuilds on add/remove/reorder only
   /// (the engine's `structure` feed); value changes never fire here.
   List<K> of(BuildContext context) => _StoreHostState.read(context, this);
-
-  /// A keyed HANDLE: `adPreviewsStore(adId).of(context)` — the reactive
-  /// nullable value read (rebuilds when THIS key appears, changes, or
-  /// disappears). The wrapperless sibling of [EntityScope]; the ref itself is
-  /// a passable first-class reference.
-  EntityRef<K, E> call(K id) => EntityRef._(this, id);
 }
 
-/// A (store, id) reference — read it reactively with [of].
-final class EntityRef<K, E extends Identifiable<K>> {
-  const EntityRef._(this.store, this.id);
-
-  final StoreMemory<K, E, Msg> store;
-  final K id;
-
+/// The reactive read of a ledger [EntityRef]: `store(id).of(context)` — the
+/// nullable per-key value (rebuilds when THIS key appears, changes, or
+/// disappears). The wrapperless sibling of [EntityScope].
+extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
+    on EntityRef<K, E, M> {
   E? of(BuildContext context) => _StoreHostState.readKey(context, store, id);
 }
 
