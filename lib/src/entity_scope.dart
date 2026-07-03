@@ -172,6 +172,12 @@ extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
   E? of(BuildContext context) => _StoreHostState.readKey(context, store, id);
 }
 
+/// The reactive UNIT read: `viewerStore.of(context)` — the value, rebuilding
+/// on every change of this one unit.
+extension ValueRead<S, M extends Msg> on ValueMemory<S, M> {
+  S of(BuildContext context) => _StoreHostState.readValue(context, this);
+}
+
 /// Hosted by the delegate above the navigators: the self-populating registry
 /// backing [StoreRead.of] — a store is subscribed on its first read.
 final class StoreHost extends StatefulWidget {
@@ -214,6 +220,19 @@ final class _StoreHostState extends State<StoreHost> {
     _keyWatches[store] ??= store.changes.listen((k) {
       setState(() => _versions[(store, k)] = (_versions[(store, k)] ?? 0) + 1);
     });
+  }
+
+  static S readValue<S, M extends Msg>(
+      BuildContext context, ValueMemory<S, M> memory) {
+    final host = context.findAncestorStateOfType<_StoreHostState>();
+    assert(host != null,
+        'no StoreHost above this context — is the app under canon\'s delegate?');
+    host!._keyWatches[memory] ??= memory.changes.listen((_) {
+      host.setState(
+          () => host._versions[memory] = (host._versions[memory] ?? 0) + 1);
+    });
+    InheritedModel.inheritFrom<_StoreModel>(context, aspect: memory);
+    return memory.value;
   }
 
   List<Object?> _watch<K, E extends Identifiable<K>>(
