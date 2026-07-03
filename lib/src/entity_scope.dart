@@ -170,12 +170,25 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
 extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
     on EntityRef<K, E, M> {
   E? of(BuildContext context) => _StoreHostState.readKey(context, store, id);
+
+  /// True while a request fact for this key awaits its answer (the store's
+  /// [Awaits] twin) — reactive on the same per-key aspect as [of].
+  bool loadingOf(BuildContext context) {
+    _StoreHostState.readKey(context, store, id);
+    return store.inFlight(id);
+  }
 }
 
 /// The reactive UNIT read: `viewerStore.of(context)` — the value, rebuilding
 /// on every change of this one unit.
 extension ValueRead<S, M extends Msg> on ValueMemory<S, M> {
   S of(BuildContext context) => _StoreHostState.readValue(context, this);
+
+  /// True while a request fact awaits its answer ([AwaitsUnit]) — reactive.
+  bool loadingOf(BuildContext context) {
+    _StoreHostState.readValue(context, this);
+    return loading;
+  }
 }
 
 /// Hosted by the delegate above the navigators: the self-populating registry
