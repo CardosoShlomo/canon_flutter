@@ -162,4 +162,42 @@ void main() {
     expect(listBuilds, 2);
     expect(find.text('b:two'), findsOneWidget);
   });
+
+  testWidgets('store(id).of(context): nullable per-key value read',
+      (tester) async {
+    var builds = 0;
+    final ledger = Ledger();
+    final store = ledger.store(const Products());
+
+    await tester.pumpWidget(StoreHost(
+      child: Builder(builder: (context) {
+        builds++;
+        final p = store('a').of(context);
+        return Text(p?.title ?? 'missing', textDirection: .ltr);
+      }),
+    ));
+    expect(find.text('missing'), findsOneWidget);
+
+    // Appears → rebuild.
+    ledger.dispatch(const ProductsMsg([Product(id: 'a', title: 'one')]));
+    await tester.pump();
+    expect(find.text('one'), findsOneWidget);
+
+    // Unrelated key → NO rebuild.
+    final before = builds;
+    ledger.dispatch(const ProductsMsg([
+      Product(id: 'a', title: 'one'),
+      Product(id: 'b', title: 'x'),
+    ]));
+    await tester.pump();
+    expect(builds, before);
+
+    // Changes → rebuild. Disappears → rebuild to missing.
+    ledger.dispatch(const TitleChangedMsg('a', 'uno'));
+    await tester.pump();
+    expect(find.text('uno'), findsOneWidget);
+    ledger.dispatch(const ProductsMsg([]));
+    await tester.pump();
+    expect(find.text('missing'), findsOneWidget);
+  });
 }

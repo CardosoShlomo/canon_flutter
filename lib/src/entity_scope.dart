@@ -159,7 +159,25 @@ final class _StoreBuilderState<K, E extends Identifiable<K>>
 /// subscribes the widget to THIS store's key SEQUENCE (add/remove/reorder);
 /// value-only changes never rebuild it (items handle those via [EntityScope]).
 extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
+  /// The key SEQUENCE, reactively — rebuilds on add/remove/reorder only
+  /// (the engine's `structure` feed); value changes never fire here.
   List<K> of(BuildContext context) => _StoreHostState.read(context, this);
+
+  /// A keyed HANDLE: `adPreviewsStore(adId).of(context)` — the reactive
+  /// nullable value read (rebuilds when THIS key appears, changes, or
+  /// disappears). The wrapperless sibling of [EntityScope]; the ref itself is
+  /// a passable first-class reference.
+  EntityRef<K, E> call(K id) => EntityRef._(this, id);
+}
+
+/// A (store, id) reference — read it reactively with [of].
+final class EntityRef<K, E extends Identifiable<K>> {
+  const EntityRef._(this.store, this.id);
+
+  final StoreMemory<K, E, Msg> store;
+  final K id;
+
+  E? of(BuildContext context) => _StoreHostState.readKey(context, store, id);
 }
 
 /// Hosted by the delegate above the navigators: the self-populating registry
@@ -175,6 +193,7 @@ final class StoreHost extends StatefulWidget {
 
 final class _StoreHostState extends State<StoreHost> {
   final Map<Object, _StoreWatch> _watches = {};
+  final Map<Object, StreamSubscription<Object?>> _keyWatches = {};
   final Map<Object, int> _versions = {};
 
   static List<K> read<K, E extends Identifiable<K>>(
@@ -185,6 +204,24 @@ final class _StoreHostState extends State<StoreHost> {
     final ids = host!._watch(store);
     InheritedModel.inheritFrom<_StoreModel>(context, aspect: store);
     return ids.cast<K>();
+  }
+
+  static E? readKey<K, E extends Identifiable<K>>(
+      BuildContext context, StoreMemory<K, E, Msg> store, K id) {
+    final host = context.findAncestorStateOfType<_StoreHostState>();
+    assert(host != null,
+        'no StoreHost above this context — is the app under canon\'s delegate?');
+    host!._watchKeys(store);
+    InheritedModel.inheritFrom<_StoreModel>(context, aspect: (store, id));
+    return store[id];
+  }
+
+  /// Per-KEY subscription for [readKey] dependents: each changed key bumps its
+  /// own (store, key) aspect — the engine's `changes` feed already names it.
+  void _watchKeys<K, E extends Identifiable<K>>(StoreMemory<K, E, Msg> store) {
+    _keyWatches[store] ??= store.changes.listen((k) {
+      setState(() => _versions[(store, k)] = (_versions[(store, k)] ?? 0) + 1);
+    });
   }
 
   List<Object?> _watch<K, E extends Identifiable<K>>(
@@ -205,6 +242,9 @@ final class _StoreHostState extends State<StoreHost> {
   void dispose() {
     for (final w in _watches.values) {
       w.sub.cancel();
+    }
+    for (final s in _keyWatches.values) {
+      s.cancel();
     }
     super.dispose();
   }
