@@ -2,7 +2,7 @@
 
 **An application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
 
-Four packages carry it: **`canon`** (the pure-Dart core: grammar, nav engine, URL model), **`ledger`** (pure-Dart stores: message bus, folds, optimistic overlays, request status), **`canon_flutter`** (the widget layer: router host, screen scoping, and reactive store reads with surgical rebuild granularity — per key, per unit, structure-only for lists — as the *default*, not as selector discipline), and **`canon_generator`** (build-time codegen). Non-Flutter consumers — servers, CLIs, tests — use the same spec without a Flutter dependency.
+Four packages carry it: **`canon`** (the pure-Dart core: grammar, nav engine, URL model), **`regent`** (pure-Dart stores: message bus, folds, optimistic overlays, request status), **`canon_flutter`** (the widget layer: router host, screen scoping, and reactive store reads with surgical rebuild granularity — per key, per unit, structure-only for lists — as the *default*, not as selector discipline), and **`canon_generator`** (build-time codegen). Non-Flutter consumers — servers, CLIs, tests — use the same spec without a Flutter dependency.
 
 Compile-safe Flutter navigation generated from **one grammar tree**. The transitions you're *allowed* to make are the only methods that exist — an illegal route is a **compile error**, not a runtime crash.
 
@@ -255,7 +255,7 @@ Retention applies only to that trunk switch — a `popTo`/`go` to an ancestor *w
 
 ## The state legs: `@entities` & `@stores`
 
-Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its stores (pure `ledger` folds of message families — the journal is the only truth, every store is a cached fold):
+Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its stores (pure `regent` folds of message families — the journal is the only truth, every store is a cached fold):
 
 ```dart
 @entities
@@ -389,5 +389,5 @@ The payoff: the spec at the top of this file *is* the complete, auditable nav sp
 
 - **`canon`** — the pure-Dart core: grammar, nav engine, URL model.
 - **`canon_flutter`** — this package: the router host, screen scoping, reactive store reads, `EntityScope`.
-- **`ledger`** — pure-Dart stores: the message bus, folds, optimistic overlays, `Awaits`.
+- **`regent`** — pure-Dart stores: the message bus, folds, optimistic overlays, `Awaits`.
 - **`canon_generator`** — build-time codegen: the typed `Screen` facade (nav, URL mirror, `.link` ingress + `.toUri()` builders, view-state) and the typed store surface with its tree ops — all from the one spec.

@@ -4,13 +4,19 @@ description: >-
   reactive view-state widgets over the pure-Dart canon runtime.
 version: 0.1.0
 repository: https://github.com/CardosoShlomo/canon_flutter
+topics:
+  - navigation
+  - router
+  - state-management
+  - deep-linking
+  - codegen
 
 environment:
   sdk: ^3.10.0
   flutter: '>=3.35.0'
 
 dependencies:
-  canon: ^0.19.0
+  canon: ^0.20.0
   canon_codec: ^0.1.4
   flutter:
     sdk: flutter
