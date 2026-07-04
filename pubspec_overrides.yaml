@@ -4,7 +4,7 @@ dependency_overrides:
     path: ../canon
   canon_codec:
     path: ../canon_codec
-  ledger:
-    path: ../ledger
+  regent:
+    path: ../regent
   identifiable:
     path: ../identifiable
