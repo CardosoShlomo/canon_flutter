@@ -308,7 +308,7 @@ final loading = productsStore(id).loadingOf(context);   // reactive
 if (productsStore.inFlight(id)) return;                 // plain guard (scroll handlers)
 ```
 
-And because the WebSocket is itself a subscriber (`ledger.on<OutMsg>` sends), **`ledger.dispatch(fact)` is the app's only verb** — the same call states a local fact, sends a request, and marks its key in flight.
+And because the WebSocket is itself a subscriber (`ledger.on<OutMsg>` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.
 
 ## Codecs (id types)
 
