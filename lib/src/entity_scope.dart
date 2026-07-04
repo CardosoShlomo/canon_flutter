@@ -181,12 +181,12 @@ extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
 
 /// The reactive UNIT read: `viewerStore.of(context)` — the value, rebuilding
 /// on every change of this one unit.
-extension ValueRead<S, M extends Msg> on ValueMemory<S, M> {
-  S of(BuildContext context) => _StoreHostState.readValue(context, this);
+extension UnitRead<S, M extends Msg> on UnitMemory<S, M> {
+  S of(BuildContext context) => _StoreHostState.readUnit(context, this);
 
   /// True while a request fact awaits its answer ([AwaitsUnit]) — reactive.
   bool loadingOf(BuildContext context) {
-    _StoreHostState.readValue(context, this);
+    _StoreHostState.readUnit(context, this);
     return loading;
   }
 }
@@ -235,8 +235,8 @@ final class _StoreHostState extends State<StoreHost> {
     });
   }
 
-  static S readValue<S, M extends Msg>(
-      BuildContext context, ValueMemory<S, M> memory) {
+  static S readUnit<S, M extends Msg>(
+      BuildContext context, UnitMemory<S, M> memory) {
     final host = context.findAncestorStateOfType<_StoreHostState>();
     assert(host != null,
         'no StoreHost above this context — is the app under canon\'s delegate?');
