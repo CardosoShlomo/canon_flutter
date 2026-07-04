@@ -2,7 +2,7 @@ name: canon_flutter
 description: >-
   Flutter bindings for canon — router delegate, screen/entity scopes, and
   reactive view-state widgets over the pure-Dart canon runtime.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/CardosoShlomo/canon_flutter
 topics:
   - navigation

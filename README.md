@@ -1,6 +1,8 @@
-# canon
+# canon_flutter
 
-**An application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
+**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens and entities into the widget tree, and turns the store engine into reactive context reads: `store(id).of(context)`, `unitStore.of(context)`, `EntityScope`, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
+
+The system it binds: **an application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
 
 Four packages carry it: **`canon`** (the pure-Dart core: grammar, nav engine, URL model), **`regent`** (pure-Dart stores: message bus, folds, optimistic overlays, request status), **`canon_flutter`** (the widget layer: router host, screen scoping, and reactive store reads with surgical rebuild granularity — per key, per unit, structure-only for lists — as the *default*, not as selector discipline), and **`canon_generator`** (build-time codegen). Non-Flutter consumers — servers, CLIs, tests — use the same spec without a Flutter dependency.
 
