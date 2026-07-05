@@ -1,3 +1,7 @@
+## 0.2.0
+
+- `ScreenScope` wraps the consumer's page chrome (the `chrome` hook) — context reads work in scaffolds and nav bars.
+
 # Changelog
 
 ## 0.1.1
