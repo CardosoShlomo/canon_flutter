@@ -75,13 +75,17 @@ final class NavDelegate extends RouterDelegate<Object>
   Page<void> _buildPage(NavSlot slot) {
     final entry = slot.entry;
     final screen = entry.screen;
-    // canon owns the ScreenScope wrap, so the raw entry/id never reaches pageOf.
-    final content =
-        ScreenScope(entry: entry, child: _graph.widgetOf(entry) as Widget);
+    final ctx = PageCtx(screen, animate: slot.animate, from: slot.from);
+    // canon owns the ScreenScope wrap — around the consumer's chrome too, so
+    // chrome reads `context.screen` and the raw entry/id never reaches pageOf.
+    final raw = _graph.widgetOf(entry) as Widget;
+    final dressed =
+        _graph.chrome == null ? raw : _graph.chrome!(raw, ctx) as Widget;
+    final content = ScreenScope(entry: entry, child: dressed);
     final build = _graph.pageOf ?? _defaultPageOf;
     return build(
       content,
-      PageCtx(screen, animate: slot.animate, from: slot.from),
+      ctx,
       screen == BootScreen.root
           ? const ValueKey('__boot__')
           : _graph.isMulti(screen)
