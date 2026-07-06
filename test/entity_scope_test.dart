@@ -25,7 +25,7 @@ class TitleChangedMsg extends ProductMsg {
   final String title;
 }
 
-class Products extends Store<String, Product, ProductMsg> {
+final class Products extends Store<String, Product, ProductMsg> {
   const Products();
 
   @override

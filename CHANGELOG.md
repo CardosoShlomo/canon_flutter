@@ -1,3 +1,7 @@
+## 0.3.0
+
+- The canon 0.22 / regent 0.4 wave.
+
 ## 0.2.1
 
 - Track canon 0.21.1 (regent 0.3 line).
