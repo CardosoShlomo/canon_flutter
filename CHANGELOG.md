@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Track canon 0.21.1 (regent 0.3 line).
+
 ## 0.2.0
 
 - `ScreenScope` wraps the consumer's page chrome (the `chrome` hook) — context reads work in scaffolds and nav bars.
