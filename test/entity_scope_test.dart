@@ -75,6 +75,7 @@ void main() {
     // One entity updates → ONE item rebuilds.
     ledger.dispatch(const TitleChangedMsg('a', 'uno'));
     await tester.pump();
+    await tester.pump();
     expect(find.text('a:uno'), findsOneWidget);
     expect(find.text('b:two'), findsOneWidget);
     expect(builds, {'a': 2, 'b': 1});
@@ -109,6 +110,7 @@ void main() {
     // Value update → the LIST build does not re-run; one item rebuilds.
     ledger.dispatch(const TitleChangedMsg('a', 'uno'));
     await tester.pump();
+    await tester.pump();
     expect(listBuilds, 1);
     expect(builds, {'a': 2, 'b': 1});
     expect(find.text('a:uno'), findsOneWidget);
@@ -119,6 +121,7 @@ void main() {
       Product(id: 'b', title: 'two'),
       Product(id: 'c', title: 'three'),
     ]));
+    await tester.pump();
     await tester.pump();
     expect(listBuilds, 2);
     expect(find.text('c:three'), findsOneWidget);
@@ -150,6 +153,7 @@ void main() {
     // Value change → the ids read does NOT rebuild; the item does.
     ledger.dispatch(const TitleChangedMsg('a', 'uno'));
     await tester.pump();
+    await tester.pump();
     expect(listBuilds, 1);
     expect(find.text('a:uno'), findsOneWidget);
 
@@ -158,6 +162,7 @@ void main() {
       Product(id: 'a', title: 'uno'),
       Product(id: 'b', title: 'two'),
     ]));
+    await tester.pump();
     await tester.pump();
     expect(listBuilds, 2);
     expect(find.text('b:two'), findsOneWidget);
@@ -181,6 +186,7 @@ void main() {
     // Appears → rebuild.
     ledger.dispatch(const ProductsMsg([Product(id: 'a', title: 'one')]));
     await tester.pump();
+    await tester.pump();
     expect(find.text('one'), findsOneWidget);
 
     // Unrelated key → NO rebuild.
@@ -190,13 +196,16 @@ void main() {
       Product(id: 'b', title: 'x'),
     ]));
     await tester.pump();
+    await tester.pump();
     expect(builds, before);
 
     // Changes → rebuild. Disappears → rebuild to missing.
     ledger.dispatch(const TitleChangedMsg('a', 'uno'));
     await tester.pump();
+    await tester.pump();
     expect(find.text('uno'), findsOneWidget);
     ledger.dispatch(const ProductsMsg([]));
+    await tester.pump();
     await tester.pump();
     expect(find.text('missing'), findsOneWidget);
   });
