@@ -255,9 +255,9 @@ child.forget()           // this subtree is dropped, rebuilt fresh on return
 
 Retention applies only to that trunk switch — a `popTo`/`go` to an ancestor *within* the scope pops the screens above as normal; they're gone.
 
-## The state legs: `@entities` & `@stores`
+## The state legs: `@entities` & `@regents`
 
-Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its stores (pure `regent` folds of message families — the journal is the only truth, every store is a cached fold):
+Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its CITIZENS (pure `regent` folds and judges of message families — the journal is the only truth, every store is a cached fold, and ROW ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
 
 ```dart
 @entities
@@ -276,13 +276,30 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Regents with RegentNode<_Regents> {
   cart(CartUnit()),                // Unit — folds the keyless cart facts
+  catalogGate(CatalogGate()),      // a VETO row: judges the flow for rows below
   products(ProductsStore());       // Store<ProductId, Product, ProductMsg>
 
-  const _Stores(this.store);
-  @override final AnyStore store;
+  const _Regents(this.regent);
+  @override final Regent regent;
+
+  // Merge edges: a store READS-FROM another through a projection (the
+  // shadow/self patterns) — store rows only, both ends.
+  static final merges = {
+    products.from(localProducts, const LocalProductSupports()),
+  };
+}
+
+/// A guard judges through the generated read-only `Stores` facade — pure,
+/// replayable, positioned. It exposes nothing consumable: observation is
+/// stores-only, by construction.
+final class CatalogGate extends Veto<CatalogCacheMsg, Stores> {
+  const CatalogGate();
+  @override
+  bool block(Envelope env, CatalogCacheMsg msg, Stores stores) =>
+      stores.cart.value.items.isNotEmpty;
 }
 ```
 
