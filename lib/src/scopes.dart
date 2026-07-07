@@ -108,9 +108,15 @@ final class ScopeLiveness extends InheritedWidget {
 /// `f:screen.key`) and rebuild ONLY when that key is added, removed, or changed —
 /// not on unrelated view-state or navigation. Provided above the Navigators.
 final class ViewModel extends InheritedModel<String> {
-  const ViewModel({required this.snapshot, required super.child});
+  const ViewModel(
+      {required this.snapshot, this.fragmentPathOf, required super.child});
 
   final Map<String, Object?> snapshot;
+
+  /// Live PATH-fragment reader (the graph's `fragmentPathOf`) — change
+  /// detection rides the snapshot's encoded `fp:` string; the decoded
+  /// positions are read through this at build time.
+  final List<Object?>? Function(Enum screen)? fragmentPathOf;
 
   static Object? read(BuildContext context, String aspect) =>
       InheritedModel.inheritFrom<ViewModel>(context, aspect: aspect)
@@ -147,6 +153,22 @@ abstract final class Fragment {
   static T? of<T>(BuildContext context, QueryKeyBase key) =>
       ViewModel.read(context, 'f:${ScreenScope.of(context).name}.${key.name}')
           as T?;
+}
+
+/// Reactive PATH-scheme fragment (`#<seg>/<seg>`) of the screen this context
+/// is under: the decoded positions in order, or null when unset. Subscribes
+/// to the one path value — rebuilds only when it changes. Typed sugar over
+/// the positions is the generator's job; position 0 of a list screen is its
+/// item anchor.
+abstract final class FragmentPath {
+  static List<Object?>? of(BuildContext context) {
+    final screen = ScreenScope.of(context);
+    // Subscribe on the encoded-string aspect (stable value compare); read
+    // the decoded positions through the model's live reader.
+    final model =
+        InheritedModel.inheritFrom<ViewModel>(context, aspect: 'fp:${screen.name}');
+    return model?.fragmentPathOf?.call(screen);
+  }
 }
 
 /// Aspect wrapper so `isCurrent` (top==screen) and `isOn` (chain∋screen) can both

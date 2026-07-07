@@ -103,6 +103,7 @@ final class NavDelegate extends RouterDelegate<Object>
     return StoreHost(
       child: ViewModel(
         snapshot: _graph.viewSnapshot(),
+        fragmentPathOf: _graph.fragmentPathOf,
         child: PlacementModel(
           chain: _graph.currentChain.toSet(),
           top: _graph.current,
