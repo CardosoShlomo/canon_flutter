@@ -16,8 +16,8 @@ environment:
   flutter: '>=3.35.0'
 
 dependencies:
-  canon: ^0.24.0
-  canon_codec: ^0.1.4
+  canon: ^0.25.0
+  canon_codec: ^0.3.0
   flutter:
     sdk: flutter
   flutter_web_plugins:
