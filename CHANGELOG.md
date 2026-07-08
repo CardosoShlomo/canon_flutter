@@ -1,3 +1,7 @@
+## 0.6.0
+
+- canon ^0.26.0 (the read-callback guard wave).
+
 ## 0.5.0
 
 - canon ^0.25.0, canon_codec ^0.3.0.
