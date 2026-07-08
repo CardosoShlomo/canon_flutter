@@ -1,3 +1,7 @@
+## 0.5.0
+
+- canon ^0.24.0.
+
 ## 0.4.0
 
 - `FragmentPath.of` reactive read; canon 0.23 wave.
