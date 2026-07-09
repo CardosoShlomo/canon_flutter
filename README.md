@@ -314,17 +314,23 @@ EntityScope(productsStore, id, child: ProductCard());  // list item: self-keyed,
 
 No selectors, no `listEquals` discipline: the store's fold already computed which keys changed and whether the key *sequence* changed (the `structure` feed), so a value edit rebuilds one card and a list shell rebuilds only when membership does.
 
-**Request status is derived, not stored.** A store's `Awaits` twin names its request family and the key each request puts in flight — the engine key-correlates: the request fact marks the key `loading`, the next fold that touches it confirms. No `loading` fields in state, no wire changes:
+**Request status is a ROW, not a field.** An in-flight unit folds the
+request fact's key in and the answering facts out — presence is loading,
+read with the same reactive surface as any state; a gate reading it drops
+duplicate asks at the queue. No `loading` fields in state, no machinery:
 
 ```dart
-class ProductsAwaits extends Awaits<ProductId, GetProductReviewsMsg> {
-  const ProductsAwaits();
+final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
+  const ReviewsInFlight() : super(const {});
   @override
-  ProductId keyOf(GetProductReviewsMsg request) => request.productId;
+  Set<ProductId> reduce(Set<ProductId> state, Msg msg) => switch (msg) {
+        GetReviews(:final productId) => {...state, productId},
+        ReviewsPage(:final id) => {for (final k in state) if (k != id) k},
+        _ => state,
+      };
 }
 
-final loading = productsStore(id).loadingOf(context);   // reactive
-if (productsStore.inFlight(id)) return;                 // plain guard (scroll handlers)
+final loading = reviewsInFlightStore.of(context).contains(id);  // reactive
 ```
 
 And because the WebSocket is itself a subscriber (`ledger.on<OutMsg>` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.
