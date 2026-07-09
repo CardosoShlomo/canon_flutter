@@ -1,3 +1,7 @@
+## 0.8.0
+
+- canon ^0.28.0 (the engine folds: NavOps over NavState).
+
 ## 0.7.0
 
 - BREAKING: `loadingOf` removed — in-flight status is a ledger row; read it with `of`.
