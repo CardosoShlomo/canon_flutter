@@ -1,3 +1,8 @@
+## 0.7.0
+
+- BREAKING: `loadingOf` removed — in-flight status is a ledger row; read it with `of`.
+- canon ^0.27.0.
+
 ## 0.6.0
 
 - canon ^0.26.0 (the read-callback guard wave).
