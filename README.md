@@ -18,7 +18,7 @@ One grammar, both ends: it drives identical navigation on mobile and the web —
 import 'package:canon/canon.dart';
 part 'screen.canon.dart';
 
-@screens
+@canon
 enum _Screens with ScreenNode<_Screens> {
   home(HomeScreen()),
   search(SearchScreen()),
@@ -60,7 +60,7 @@ enum _Screens with ScreenNode<_Screens> {
 enum _View with QueryKeyBase { text, sort, at, dirty }
 ```
 
-A row is `name(WidgetConst())` or `name(WidgetConst(), idCodec)`. One library-private `@screens` enum, one `NavGraph`, `part 'screen.canon.dart';` — that's the whole grammar. Codegen turns this tree into a typed `Screen` facade whose methods *are* its edges. Read this section and you've read the app's navigation; everything below maps to a line in it.
+A row is `name(WidgetConst())` or `name(WidgetConst(), idCodec)`. One library-private `@canon` screens enum, one `NavGraph`, `part 'screen.canon.dart';` — that's the whole grammar. Codegen turns this tree into a typed `Screen` facade whose methods *are* its edges. Read this section and you've read the app's navigation; everything below maps to a line in it.
 
 ## The core: typed transitions are legal moves
 
@@ -260,7 +260,7 @@ Retention applies only to that trunk switch — a `popTo`/`go` to an ancestor *w
 Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its CITIZENS (pure `regent` folds and judges of message families — the journal is the only truth, every store is a cached fold, and ROW ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
 
 ```dart
-@entities
+@canon
 enum _Entities with EntityNode<_Entities> {
   cart(CartState),                 // keyless — a UNIT: the session is its identity
   product(Product, .product),      // a row binds an entity TYPE to its id node
@@ -276,7 +276,7 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
-@regents
+@canon
 enum _Regents with RegentNode<_Regents> {
   cart(CartUnit()),                // Unit — folds the keyless cart facts
   catalogGate(CatalogGate()),      // a VETO row: judges the flow for rows below
