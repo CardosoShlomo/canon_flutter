@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'package:canon/canon.dart';
+import 'package:meta/meta.dart';
 
 import 'scopes.dart';
 
@@ -123,33 +124,38 @@ final class IdScope extends StatelessWidget {
   final Enum? node;
   final Widget child;
 
-  /// The ambient id itself — the nearest entry MATCHING [node] (or the
-  /// nearest of any kind when [node] is omitted; an untagged plant matches
-  /// everything). [K] is the caller's assertion of its type. For the
-  /// entity's id ONLY use `EntityScope.idOf`; for a named screen's,
-  /// `context.idOf`.
+  /// The ambient id at the nearest entry MATCHING [node] (an untagged plant
+  /// matches everything; [node] omitted = plain nearest). INTERNAL: [K] is
+  /// unchecked at runtime (extension types erase) — consumers read through
+  /// the generated `<Node>ID.of(context)` faces, which supply the node.
+  @internal
   static K of<K>(BuildContext context, [Enum? node]) =>
       _ambientId(context, node) as K;
 
   /// The deictic navigation handle at the ambient id — the generated verbs
-  /// hang on it (`MediaQuery.sizeOf`-shaped aspect read beside [of]).
+  /// hang on it. INTERNAL: consumers mint via `<Node>ID.navOf(context)`.
+  @internal
   static IdNav<K> navOf<K>(BuildContext context, [Enum? node]) =>
       IdNav(_ambientId(context, node) as K, ScreenScope.of(context));
 
-  /// The SCREEN's own id, never an item's — the source-specific read for
-  /// when an item scope may sit between (`ProductID.screenOf(context)`).
+  /// The SCREEN's own id, never an item's. INTERNAL: consumers read via
+  /// `<Node>ID.screenOf(context)`.
+  @internal
   static K screenOf<K>(BuildContext context) =>
       ScreenScope.ownIdOf<K>(context);
 
-  /// The enclosing ITEM's id, never the screen's — the typed form of
-  /// `EntityScope.idOf` (`ProductID.itemOf(context)`).
+  /// The enclosing ITEM's id, never the screen's. INTERNAL: consumers read
+  /// via `<Node>ID.itemOf(context)`.
+  @internal
   static K itemOf<K>(BuildContext context) => EntityScope.idOf<K>(context);
 
   /// Tags a store with its grammar id node — emitted by the generated
   /// `bind()`, read back by every scope the store plants.
+  @internal
   static void tag(Object store, Enum node) => _storeNodes[store] = node;
 
   /// The tagged node of [store], if the generated wiring declared one.
+  @internal
   static Enum? nodeOf(Object store) => _storeNodes[store];
 
   static final _storeNodes = <Object, Enum>{};
