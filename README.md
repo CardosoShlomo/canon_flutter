@@ -270,9 +270,10 @@ enum _Entities with EntityNode<_Entities> {
   @override final Type type;
   @override final Ids? key;
 
+  // The graph declares OWNERSHIP only — an unlisted row is a root; an
+  // all-flat entity space omits it entirely.
   static final graph = EntityGraph({
-    cart,
-    product({review}),             // ownership: reviews live inside their product
+    product({review}),             // reviews live inside their product
   });
 }
 
