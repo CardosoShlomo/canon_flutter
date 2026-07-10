@@ -1,6 +1,6 @@
 # canon_flutter
 
-**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens and entities into the widget tree, and turns the store engine into reactive context reads: `store(id).of(context)`, `unitStore.of(context)`, `EntityScope`, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
+**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens, entities, and IDENTITY into the widget tree, and turns the store engine into reactive context reads: `store.entityOf(context, id)`, `unitStore.of(context)`, `store.item(id, child:)`, the deictic `ProductID.navOf(context)` faces, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
 
 The system it binds: **an application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
 
@@ -292,24 +292,24 @@ enum _Regents with RegentNode<_Regents> {
   };
 }
 
-/// A guard judges through the generated read-only `Stores` facade — pure,
-/// replayable, positioned. It exposes nothing consumable: observation is
-/// stores-only, by construction.
-final class CatalogGate extends Veto<CatalogCacheMsg, Stores> {
+/// A guard judges the ledger's OWN state by citizen identity — pure,
+/// replayable, positioned. `read(const X())` is checked at build time:
+/// the instance must name a row of the enum.
+final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();
   @override
-  bool block(Envelope env, CatalogCacheMsg msg, Stores stores) =>
-      stores.cart.value.items.isNotEmpty;
+  bool block(Envelope env, CatalogCacheMsg msg, ReadStore read) =>
+      read(const CatalogCovered());
 }
 ```
 
 Codegen emits a typed store surface (`productsStore`, `cartStore`) plus surgical **tree ops** derived from the ownership graph (`addReview(productId, review)` and friends). The reads are where this package earns its name — reactive, with the engine deciding granularity **once** instead of every consumer re-deriving it:
 
 ```dart
-final ids = productsStore.of(context);          // key SEQUENCE — rebuilds on add/remove/reorder ONLY
-final product = productsStore(id).of(context);  // ONE entity, nullable — rebuilds when THIS key changes
-final cart = cartStore.of(context);             // the unit's value
-EntityScope(productsStore, id, child: ProductCard());  // list item: self-keyed, per-key rebuilds
+final ids = productsStore.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
+final product = productsStore.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
+final cart = cartStore.of(context);                  // the unit's value
+productsStore.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed
 ```
 
 No selectors, no `listEquals` discipline: the store's fold already computed which keys changed and whether the key *sequence* changed (the `structure` feed), so a value edit rebuilds one card and a list shell rebuilds only when membership does.
@@ -330,10 +330,36 @@ final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
       };
 }
 
-final loading = reviewsInFlightStore.of(context).contains(id);  // reactive
+final loading = reviewsInFlightStore.containsIdOf(context);  // at the ambient id
 ```
 
 And because the WebSocket is itself a subscriber (`ledger.on<OutMsg>` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.
+
+## Ambient identity: the deictic reads and verbs
+
+Every scope PLANTS the identity it holds — the screen its nav id, an
+`EntityScope`/`store.item` its item's, a bare `IdScope(id)` anything else —
+each tagged with its grammar NODE. The generated per-node faces resolve to
+the nearest plant **of their node** (extension types erase, so nearness
+alone could hand back the wrong identity wearing the right type — node
+matching makes that impossible by construction):
+
+```dart
+ProductID.of(context)                       // the typed ambient id
+ProductID.navOf(context).go();              // DEICTIC nav: from where this widget
+                                            // stands — no chain named, no id passed
+ProductID.on(context, On.seller)?.goChat(); // a CLAIMED chain: the composite's other
+                                            // component read from the stack; a chain
+                                            // that proves nothing is a COMPILE error
+ProductID.screenOf(context);                // one source only: the screen's
+ProductID.itemOf(context);                  // one source only: the item's
+chatsStore.idOf(context);                   // provenance: the scope's id ONLY if
+                                            // planted from THIS store (null else)
+```
+
+Item widgets never pass the id they stand on; outbound FACTS still carry
+their ids explicitly — the id is *read* ambiently, the write stays a
+visible, journaled value (`dispatch(SetQty(ProductID.of(context), 3))`).
 
 ## Codecs (id types)
 
