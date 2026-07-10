@@ -130,6 +130,15 @@ final class IdScope extends StatelessWidget {
   static IdNav<K> navOf<K>(BuildContext context) =>
       IdNav(_ambientId(context) as K, ScreenScope.of(context));
 
+  /// The SCREEN's own id, never an item's — the source-specific read for
+  /// when an item scope may sit between (`ProductID.screenOf(context)`).
+  static K screenOf<K>(BuildContext context) =>
+      ScreenScope.ownIdOf<K>(context);
+
+  /// The enclosing ITEM's id, never the screen's — the typed form of
+  /// `EntityScope.idOf` (`ProductID.itemOf(context)`).
+  static K itemOf<K>(BuildContext context) => EntityScope.idOf<K>(context);
+
   @override
   Widget build(BuildContext context) => IdEntry(id: id, child: child);
 }

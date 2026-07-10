@@ -57,6 +57,12 @@ final class ScreenScope extends StatelessWidget {
     return scope!.entry;
   }
 
+  /// The screen's own id regardless of which screen it is — the source-
+  /// specific read behind `IdScope.screenOf` (node-level typing; the exact-
+  /// screen assertion stays with [idOf]).
+  @internal
+  static T ownIdOf<T>(BuildContext context) => _entryOf(context).id as T;
+
   /// The typed id of screen [spec] this context is under. The single sanctioned
   /// id read; an id-bearing screen always has its id, so [T] is non-null.
   static T idOf<T>(BuildContext context, Enum spec) {
