@@ -1,3 +1,7 @@
+## 0.9.0
+
+- canon ^0.29.0 (regent 0.11: judgments).
+
 ## 0.8.0
 
 - canon ^0.28.0 (the engine folds: NavOps over NavState).
