@@ -58,7 +58,18 @@ enum _Screens with ScreenNode<_Screens> {
   );
 }
 
-void main() => runApp(MaterialApp.router(routerDelegate: Screen.manager));
+void main() {
+  // The cold-start resolver: a landing URL commits its place (the deep
+  // link case); a bare `/` commits the catalog.
+  Screen.resolver = (url) {
+    if (url case final Place p) {
+      Screen.go(p);
+    } else {
+      Screen.goCatalog();
+    }
+  };
+  runApp(MaterialApp.router(routerDelegate: Screen.manager));
+}
 
 // ── Screens ──
 class _Catalog extends StatelessWidget {
