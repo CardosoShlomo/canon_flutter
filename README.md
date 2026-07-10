@@ -257,7 +257,7 @@ Retention applies only to that trunk switch — a `popTo`/`go` to an ancestor *w
 
 ## The state legs: `@entities` & `@regents`
 
-Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its CITIZENS (pure `regent` folds and judges of message families — the journal is the only truth, every store is a cached fold, and ROW ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
+Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its REGENTS (pure folds and judges of message families — the journal is the only truth, every store is a cached fold, and ROW ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
 
 ```dart
 @canon
@@ -293,7 +293,7 @@ enum _Regents with RegentNode<_Regents> {
   };
 }
 
-/// A guard judges the ledger's OWN state by citizen identity — pure,
+/// A guard judges the ledger's OWN state by regent identity — pure,
 /// replayable, positioned. `read(const X())` is checked at build time:
 /// the instance must name a row of the enum.
 final class CatalogGate extends Veto<CatalogCacheMsg> {
