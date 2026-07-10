@@ -97,9 +97,12 @@ final class _EntityScopeState<K, E extends Identifiable<K>>
   @override
   Widget build(BuildContext context) =>
       // The scope plants its id too: identity ambience (IdScope.of) works
-      // under an EntityScope without a second wrapper.
+      // under an EntityScope without a second wrapper. The node comes from
+      // the store's tag (generated bind() knows the grammar association).
       IdEntry(
           id: widget.id,
+          node: IdScope.nodeOf(widget.store),
+          parent: context.getInheritedWidgetOfExactType<IdEntry>(),
           child: _EntityEntry(
               entity: _entity,
               id: widget.id,
@@ -110,25 +113,28 @@ final class _EntityScopeState<K, E extends Identifiable<K>>
 /// Identity ambience without data: plants ONE id over an item subtree, so
 /// id-only lists (reactors, comments — rows that aren't store entities) get
 /// deictic navigation. `EntityScope` plants this too — [of] works under
-/// either scope.
+/// either scope. Pass [node] to tag the identity (the generated faces
+/// resolve by node, so a tagged plant can never answer another node's read).
 final class IdScope extends StatelessWidget {
-  IdScope(this.id, {Key? key, required this.child})
+  IdScope(this.id, {Key? key, this.node, required this.child})
       : super(key: key ?? ValueKey(id));
 
   final Object? id;
+  final Enum? node;
   final Widget child;
 
-  /// The ambient id itself. The NEAREST identity wins by tree order: an
-  /// item scope if one is planted, else the screen's own id ([ScreenScope]
-  /// plants it). [K] is the caller's assertion of its type. For the
+  /// The ambient id itself — the nearest entry MATCHING [node] (or the
+  /// nearest of any kind when [node] is omitted; an untagged plant matches
+  /// everything). [K] is the caller's assertion of its type. For the
   /// entity's id ONLY use `EntityScope.idOf`; for a named screen's,
   /// `context.idOf`.
-  static K of<K>(BuildContext context) => _ambientId(context) as K;
+  static K of<K>(BuildContext context, [Enum? node]) =>
+      _ambientId(context, node) as K;
 
   /// The deictic navigation handle at the ambient id — the generated verbs
   /// hang on it (`MediaQuery.sizeOf`-shaped aspect read beside [of]).
-  static IdNav<K> navOf<K>(BuildContext context) =>
-      IdNav(_ambientId(context) as K, ScreenScope.of(context));
+  static IdNav<K> navOf<K>(BuildContext context, [Enum? node]) =>
+      IdNav(_ambientId(context, node) as K, ScreenScope.of(context));
 
   /// The SCREEN's own id, never an item's — the source-specific read for
   /// when an item scope may sit between (`ProductID.screenOf(context)`).
@@ -139,14 +145,35 @@ final class IdScope extends StatelessWidget {
   /// `EntityScope.idOf` (`ProductID.itemOf(context)`).
   static K itemOf<K>(BuildContext context) => EntityScope.idOf<K>(context);
 
+  /// Tags a store with its grammar id node — emitted by the generated
+  /// `bind()`, read back by every scope the store plants.
+  static void tag(Object store, Enum node) => _storeNodes[store] = node;
+
+  /// The tagged node of [store], if the generated wiring declared one.
+  static Enum? nodeOf(Object store) => _storeNodes[store];
+
+  static final _storeNodes = <Object, Enum>{};
+
   @override
-  Widget build(BuildContext context) => IdEntry(id: id, child: child);
+  Widget build(BuildContext context) => IdEntry(
+      id: id,
+      node: node,
+      parent: context.getInheritedWidgetOfExactType<IdEntry>(),
+      child: child);
 }
 
-Object? _ambientId(BuildContext context) {
-  final entry = context.getInheritedWidgetOfExactType<IdEntry>();
-  assert(entry != null, 'no ambient id above this context');
-  return entry!.id;
+/// The nearest entry matching [node] — walks the plant chain; an untagged
+/// entry is a wildcard. With [node] null, plain nearest.
+Object? _ambientId(BuildContext context, [Enum? node]) {
+  var e = context.getInheritedWidgetOfExactType<IdEntry>();
+  if (node != null) {
+    while (e != null && e.node != null && e.node != node) {
+      e = e.parent;
+    }
+  }
+  assert(e != null,
+      'no ambient ${node == null ? 'id' : '`${node.name}` id'} above this context');
+  return e!.id;
 }
 
 /// The collection half of the read-path: rebuilds ONLY when the store's key
@@ -213,11 +240,12 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
   List<K> of(BuildContext context) => _StoreHostState.read(context, this);
 
   /// The keyed reactive read: the entity at [id], or — with [id] omitted —
-  /// at the context's AMBIENT id (resolved like [IdScope.of]: nearest
-  /// planted scope, else the screen's own). Rebuilds when THIS key appears,
-  /// changes, or disappears. Nullable: the id may not be in this store (yet).
+  /// at the context's AMBIENT id, resolved at THIS store's own node (the
+  /// generated tag): nearest matching plant, never another identity's.
+  /// Rebuilds when THIS key appears, changes, or disappears. Nullable: the
+  /// id may not be in this store (yet).
   E? entityOf(BuildContext context, [K? id]) => _StoreHostState.readKey(
-      context, this, id ?? _ambientId(context) as K);
+      context, this, id ?? _ambientId(context, IdScope.nodeOf(this)) as K);
 
   /// Plants this store's item scope — the itemBuilder spelling of
   /// `EntityScope(store, id, child: …)`:

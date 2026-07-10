@@ -209,4 +209,26 @@ void main() {
     await tester.pump();
     expect(find.text('missing'), findsOneWidget);
   });
+
+  testWidgets('node-tagged ambience: a typed read skips other nodes',
+      (tester) async {
+    late String seller, product, nearest;
+    await tester.pumpWidget(
+      IdScope('seller-1', node: _Node.seller,
+          child: IdScope('prod-1', node: _Node.product,
+              child: Builder(builder: (context) {
+        // The nearest entry is the PRODUCT scope; a seller read must walk
+        // past it — erasure never hands back the wrong node's id.
+        seller = IdScope.of<String>(context, _Node.seller);
+        product = IdScope.of<String>(context, _Node.product);
+        nearest = IdScope.of<String>(context);
+        return const SizedBox.shrink();
+      }))),
+    );
+    expect(seller, 'seller-1');
+    expect(product, 'prod-1');
+    expect(nearest, 'prod-1');
+  });
 }
+
+enum _Node { product, seller }

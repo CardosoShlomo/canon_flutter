@@ -77,27 +77,50 @@ final class ScreenScope extends StatelessWidget {
     final live = ScopeLiveness.of(context);
     final show = live == null || live.active || live.kept(entry.screen);
     final body = show ? child : const SizedBox.shrink();
+    if (entry.id == null) return _ScreenEntry(entry: entry, child: body);
+    // The screen's own id node is grammar truth, sitting on the enum row
+    // (an id-bearing screen is always a ScreenNodeBase; dynamic dodges its
+    // F-bound — the synthetic boot screen never reaches here, its id is null).
+    final nid = (entry.screen as dynamic).id;
     return _ScreenEntry(
       entry: entry,
-      // An id-locked screen plants its identity: the NEAREST-id reads
-      // (IdScope.of and friends) resolve by plain tree order — an item
-      // scope below shadows this, bare screen widgets stand in it.
-      child: entry.id == null ? body : IdEntry(id: entry.id, child: body),
+      // An id-locked screen plants its identity: the ambient reads resolve
+      // to the nearest MATCHING entry — an item scope below shadows this
+      // for its own node, bare screen widgets stand in it.
+      child: IdEntry(
+          id: entry.id,
+          node: nid is Enum ? nid : null,
+          parent: context.getInheritedWidgetOfExactType<IdEntry>(),
+          child: body),
     );
   }
 }
 
 /// The one ambient-identity carrier: planted by [ScreenScope] (the screen's
 /// own id), `EntityScope` (the item's), and `IdScope` (a bare id). Nearest
-/// wins by tree order.
+/// MATCHING wins: entries carry their id NODE (grammar identity), and the
+/// typed reads walk the [parent] chain to the nearest entry of their node —
+/// erasure can never hand back a different identity wearing the right type.
+/// An untagged entry ([node] null) is a wildcard: it matches any request.
 @internal
 final class IdEntry extends InheritedWidget {
-  const IdEntry({super.key, required this.id, required super.child});
+  const IdEntry(
+      {super.key,
+      required this.id,
+      this.node,
+      this.parent,
+      required super.child});
 
   final Object? id;
 
+  /// The id's grammar node (`Ids.product`) — null for an untagged plant.
+  final Enum? node;
+
+  /// The entry above this one, captured at plant time — the walkable chain.
+  final IdEntry? parent;
+
   @override
-  bool updateShouldNotify(IdEntry old) => id != old.id;
+  bool updateShouldNotify(IdEntry old) => id != old.id || node != old.node;
 }
 
 /// Carries the page's grammar entry to descendants (the `of` lookup).

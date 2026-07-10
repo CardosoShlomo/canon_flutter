@@ -1,7 +1,7 @@
 ## 0.8.0
 
 - canon ^0.28.0 (the engine folds: NavOps over NavState).
-- Identity ambience: `ScreenScope`, `EntityScope`, and the new `IdScope` all plant their id — the NEAREST wins by tree order. `IdScope.of<K>(context)` reads the ambient id, `IdScope.navOf<K>(context)` mints the deictic `IdNav` handle, `IdScope.screenOf<K>`/`itemOf<K>` read one source only; `EntityScope.idOf` reads the entity's only, `context.idOf(.screen)` a named screen's.
+- Identity ambience: `ScreenScope`, `EntityScope`, and the new `IdScope` all plant their id, NODE-TAGGED (the screen's grammar node; the store's generated tag; `IdScope(node:)`) — typed reads resolve to the nearest MATCHING node, so erasure can never answer with another identity's id; untagged plants stay wildcards. `IdScope.of<K>(context)` reads the ambient id, `IdScope.navOf<K>(context)` mints the deictic `IdNav` handle, `IdScope.screenOf<K>`/`itemOf<K>` read one source only; `EntityScope.idOf` reads the entity's only, `context.idOf(.screen)` a named screen's.
 - `store.item(id, child: …)` — the itemBuilder spelling of planting an `EntityScope`.
 - Ambient-id reads: `store.entityOf(context, [id])` (the keyed reactive read — ambient id when omitted, explicit when passed; replaces `store(id).of(context)`), `store.idOf(context)` (the enclosing scope's id ONLY if planted from this store — identity with provenance, null otherwise), and `setUnit.containsIdOf(context)` (the in-flight membership idiom).
 
