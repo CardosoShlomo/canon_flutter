@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 
 import 'package:canon/canon.dart';
 
+import 'scopes.dart';
+
 /// The item-level sibling of `ScreenScope`: planted in a list's `itemBuilder`,
 /// it scopes ONE entity (id + live data) to the item's subtree.
 ///
@@ -51,6 +53,7 @@ final class EntityScope<K, E extends Identifiable<K>> extends StatefulWidget {
     return entry!.store as S;
   }
 
+
   @override
   State<EntityScope<K, E>> createState() => _EntityScopeState<K, E>();
 }
@@ -93,11 +96,48 @@ final class _EntityScopeState<K, E extends Identifiable<K>>
 
   @override
   Widget build(BuildContext context) =>
-      _EntityEntry(
-          entity: _entity,
+      // The scope plants its id too: identity ambience (IdScope.of) works
+      // under an EntityScope without a second wrapper.
+      IdEntry(
           id: widget.id,
-          store: widget.store,
-          child: widget.child);
+          child: _EntityEntry(
+              entity: _entity,
+              id: widget.id,
+              store: widget.store,
+              child: widget.child));
+}
+
+/// Identity ambience without data: plants ONE id over an item subtree, so
+/// id-only lists (reactors, comments — rows that aren't store entities) get
+/// deictic navigation. `EntityScope` plants this too — [of] works under
+/// either scope.
+final class IdScope extends StatelessWidget {
+  IdScope(this.id, {Key? key, required this.child})
+      : super(key: key ?? ValueKey(id));
+
+  final Object? id;
+  final Widget child;
+
+  /// The ambient id itself. The NEAREST identity wins by tree order: an
+  /// item scope if one is planted, else the screen's own id ([ScreenScope]
+  /// plants it). [K] is the caller's assertion of its type. For the
+  /// entity's id ONLY use `EntityScope.idOf`; for a named screen's,
+  /// `context.idOf`.
+  static K of<K>(BuildContext context) => _ambientId(context) as K;
+
+  /// The deictic navigation handle at the ambient id — the generated verbs
+  /// hang on it (`MediaQuery.sizeOf`-shaped aspect read beside [of]).
+  static IdNav<K> navOf<K>(BuildContext context) =>
+      IdNav(_ambientId(context) as K, ScreenScope.of(context));
+
+  @override
+  Widget build(BuildContext context) => IdEntry(id: id, child: child);
+}
+
+Object? _ambientId(BuildContext context) {
+  final entry = context.getInheritedWidgetOfExactType<IdEntry>();
+  assert(entry != null, 'no ambient id above this context');
+  return entry!.id;
 }
 
 /// The collection half of the read-path: rebuilds ONLY when the store's key
@@ -162,6 +202,32 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
   /// The key SEQUENCE, reactively — rebuilds on add/remove/reorder only
   /// (the engine's `structure` feed); value changes never fire here.
   List<K> of(BuildContext context) => _StoreHostState.read(context, this);
+
+  /// The entity at the context's ambient id, reactively — the keyed read
+  /// `store(id).of(context)` with the id resolved like [IdScope.of]: the
+  /// nearest planted scope, else the screen's own id. Nullable: the ambient
+  /// identity may not be in this store (yet).
+  E? entityOf(BuildContext context) =>
+      _StoreHostState.readKey(context, this, _ambientId(context) as K);
+
+  /// Plants this store's item scope — the itemBuilder spelling of
+  /// `EntityScope(store, id, child: …)`:
+  ///
+  /// ```dart
+  /// itemBuilder: (_, i) => productsStore.item(ids[i], child: const _Tile()),
+  /// ```
+  Widget item(K id, {required Widget child}) =>
+      EntityScope(this, id, child: child);
+
+  /// The enclosing [EntityScope]'s id, ONLY if that scope was planted from
+  /// THIS store — identity with provenance. Null when the nearest entity
+  /// scope came from another source, so a shared item widget branches on
+  /// where it stands: `chatsStore.idOf(context) ?? loopChat path`.
+  K? idOf(BuildContext context) {
+    final entry = context.getInheritedWidgetOfExactType<_EntityEntry>();
+    assert(entry != null, 'no EntityScope above this context');
+    return identical(entry!.store, this) ? entry.id as K : null;
+  }
 }
 
 /// The reactive read of a ledger [EntityRef]: `store(id).of(context)` — the
@@ -177,6 +243,15 @@ extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
 /// in-flight unit) — read it with this same surface.
 extension UnitRead<S, M extends Msg> on UnitMemory<S, M> {
   S of(BuildContext context) => _StoreHostState.readUnit(context, this);
+}
+
+/// Membership of the context's ambient id in a SET unit — the in-flight
+/// idiom: `reviewsInFlightStore.containsIdOf(context)`. The set's ELEMENT
+/// type states which identity the unit is keyed by; the id resolves like
+/// [IdScope.of] (nearest planted scope, else the screen's own).
+extension UnitSetRead<K, M extends Msg> on UnitMemory<Set<K>, M> {
+  bool containsIdOf(BuildContext context) =>
+      _StoreHostState.readUnit(context, this).contains(_ambientId(context));
 }
 
 /// Hosted by the delegate above the navigators: the self-populating registry

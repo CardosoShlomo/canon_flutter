@@ -70,11 +70,28 @@ final class ScreenScope extends StatelessWidget {
   Widget build(BuildContext context) {
     final live = ScopeLiveness.of(context);
     final show = live == null || live.active || live.kept(entry.screen);
+    final body = show ? child : const SizedBox.shrink();
     return _ScreenEntry(
       entry: entry,
-      child: show ? child : const SizedBox.shrink(),
+      // An id-locked screen plants its identity: the NEAREST-id reads
+      // (IdScope.of and friends) resolve by plain tree order — an item
+      // scope below shadows this, bare screen widgets stand in it.
+      child: entry.id == null ? body : IdEntry(id: entry.id, child: body),
     );
   }
+}
+
+/// The one ambient-identity carrier: planted by [ScreenScope] (the screen's
+/// own id), `EntityScope` (the item's), and `IdScope` (a bare id). Nearest
+/// wins by tree order.
+@internal
+final class IdEntry extends InheritedWidget {
+  const IdEntry({super.key, required this.id, required super.child});
+
+  final Object? id;
+
+  @override
+  bool updateShouldNotify(IdEntry old) => id != old.id;
 }
 
 /// Carries the page's grammar entry to descendants (the `of` lookup).
