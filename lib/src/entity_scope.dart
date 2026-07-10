@@ -212,12 +212,12 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
   /// (the engine's `structure` feed); value changes never fire here.
   List<K> of(BuildContext context) => _StoreHostState.read(context, this);
 
-  /// The entity at the context's ambient id, reactively — the keyed read
-  /// `store(id).of(context)` with the id resolved like [IdScope.of]: the
-  /// nearest planted scope, else the screen's own id. Nullable: the ambient
-  /// identity may not be in this store (yet).
-  E? entityOf(BuildContext context) =>
-      _StoreHostState.readKey(context, this, _ambientId(context) as K);
+  /// The keyed reactive read: the entity at [id], or — with [id] omitted —
+  /// at the context's AMBIENT id (resolved like [IdScope.of]: nearest
+  /// planted scope, else the screen's own). Rebuilds when THIS key appears,
+  /// changes, or disappears. Nullable: the id may not be in this store (yet).
+  E? entityOf(BuildContext context, [K? id]) => _StoreHostState.readKey(
+      context, this, id ?? _ambientId(context) as K);
 
   /// Plants this store's item scope — the itemBuilder spelling of
   /// `EntityScope(store, id, child: …)`:
@@ -237,14 +237,6 @@ extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
     assert(entry != null, 'no EntityScope above this context');
     return identical(entry!.store, this) ? entry.id as K : null;
   }
-}
-
-/// The reactive read of a ledger [EntityRef]: `store(id).of(context)` — the
-/// nullable per-key value (rebuilds when THIS key appears, changes, or
-/// disappears). The wrapperless sibling of [EntityScope].
-extension EntityRefRead<K, E extends Identifiable<K>, M extends Msg>
-    on EntityRef<K, E, M> {
-  E? of(BuildContext context) => _StoreHostState.readKey(context, store, id);
 }
 
 /// The reactive UNIT read: `viewerStore.of(context)` — the value, rebuilding

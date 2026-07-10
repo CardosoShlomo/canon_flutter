@@ -168,7 +168,7 @@ void main() {
     expect(find.text('b:two'), findsOneWidget);
   });
 
-  testWidgets('store(id).of(context): nullable per-key value read',
+  testWidgets('store.entityOf(context, id): nullable per-key value read',
       (tester) async {
     var builds = 0;
     final ledger = Ledger();
@@ -177,7 +177,7 @@ void main() {
     await tester.pumpWidget(StoreHost(
       child: Builder(builder: (context) {
         builds++;
-        final p = store('a').of(context);
+        final p = store.entityOf(context, 'a');
         return Text(p?.title ?? 'missing', textDirection: .ltr);
       }),
     ));
