@@ -1,3 +1,7 @@
+## 0.10.0
+
+- canon ^0.30.0 (regent 0.12: `Regency` graphs, CRUD bricks; the @regents enum retires).
+
 ## 0.9.0
 
 - canon ^0.29.0 (regent 0.11: judgments).
