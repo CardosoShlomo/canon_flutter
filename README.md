@@ -1,6 +1,6 @@
 # canon_flutter
 
-**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens, entities, and IDENTITY into the widget tree, and turns the store engine into reactive context reads: `store.entityOf(context, id)`, `unitStore.of(context)`, `store.item(id, child:)`, the deictic `ProductID.navOf(context)` faces, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
+**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens, entities, and IDENTITY into the widget tree, and turns the store engine into reactive context reads: `ledger.products.entityOf(context, id)`, `ledger.viewer.of(context)`, `ledger.products.item(id, child:)`, the deictic `ProductID.navOf(context)` faces, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
 
 The system it binds: **an application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
 
@@ -255,9 +255,9 @@ child.forget()           // this subtree is dropped, rebuilt fresh on return
 
 Retention applies only to that trunk switch — a `popTo`/`go` to an ancestor *within* the scope pops the screens above as normal; they're gone.
 
-## The state legs: `@entities` & `@regents`
+## The state legs: `@entities` & the regency
 
-Navigation is one projection of the spec; **state is the other**. Two more small enums declare the app's entity space and its REGENTS (pure folds and judges of message families — the journal is the only truth, every store is a cached fold, and ROW ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
+Navigation is one projection of the spec; **state is the other**. One more small enum declares the app's entity space, and a const REGENCY declares its REGENTS (pure folds and judges of message families — the record is the only truth, every store is a cached fold, and SET ORDER IS TRAVERSAL ORDER: a guard row protects exactly the rows below it):
 
 ```dart
 @canon
@@ -278,39 +278,35 @@ enum _Entities with EntityNode<_Entities> {
 }
 
 @canon
-enum _Regents with RegentNode<_Regents> {
-  cart(CartUnit()),                // Unit — folds the keyless cart facts
-  catalogGate(CatalogGate()),      // a VETO row: judges the flow for rows below
-  products(ProductsStore());       // Store<ProductId, Product, ProductMsg>
-
-  const _Regents(this.regent);
-  @override final Regent regent;
-
-  // Merge edges: a store READS-FROM another through a projection (the
-  // shadow/self patterns) — store rows only, both ends.
-  static final merges = {
-    products.from(localProducts, const LocalProductSupports()),
-  };
-}
+const app = Regency({
+  Cart(),          // Unit — folds the keyless cart facts
+  CatalogGate(),   // a VETO row: judges the flow for rows below
+  LocalProducts(), // the disk-cache shadow
+  Products(),      // Store<ProductId, Product, ProductMsg>
+}, merges: {
+  // Merge edges: a store READS-FROM another through a projection that
+  // carries its own endpoints (the shadow/self patterns).
+  LocalProductSupports(),
+});
 
 /// A guard judges the ledger's OWN state by regent identity — pure,
 /// replayable, positioned. `read(const X())` is checked at build time:
-/// the instance must name a row of the enum.
+/// the instance must name a row of the graph.
 final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();
   @override
-  bool block(Envelope env, CatalogCacheMsg msg, ReadStore read) =>
+  bool block(CatalogCacheMsg msg, ReadStore read) =>
       read(const CatalogCovered());
 }
 ```
 
-Codegen emits a typed store surface (`productsStore`, `cartStore`) plus surgical **tree ops** derived from the ownership graph (`addReview(productId, review)` and friends). The reads are where this package earns its name — reactive, with the engine deciding granularity **once** instead of every consumer re-deriving it:
+The runtime builds the ledger (`Ledger.root(app)` splices rows and wires merges); codegen adds the NAMES — one typed getter per row (`ledger.products`, sugar over `ledger.at(const Products())`) — plus surgical **tree ops** derived from the ownership graph (`addReview(productId, review)` and friends). The reads are where this package earns its name — reactive, with the engine deciding granularity **once** instead of every consumer re-deriving it:
 
 ```dart
-final ids = productsStore.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
-final product = productsStore.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
-final cart = cartStore.of(context);                  // the unit's value
-productsStore.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed
+final ids = ledger.products.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
+final product = ledger.products.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
+final cart = ledger.cart.of(context);                  // the unit's state
+ledger.products.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed
 ```
 
 No selectors, no `listEquals` discipline: the store's fold already computed which keys changed and whether the key *sequence* changed (the `structure` feed), so a value edit rebuilds one card and a list shell rebuilds only when membership does.
@@ -321,20 +317,20 @@ read with the same reactive surface as any state; a gate reading it drops
 duplicate asks at the queue. No `loading` fields in state, no machinery:
 
 ```dart
-final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
+final class ReviewsInFlight extends Unit<Set<ProductId>, ReviewsInFlightMsg> {
   const ReviewsInFlight() : super(const {});
   @override
-  Set<ProductId> reduce(Set<ProductId> state, Msg msg) => switch (msg) {
+  Set<ProductId> reduce(Set<ProductId> state, ReviewsInFlightMsg msg) =>
+      switch (msg) {
         GetReviews(:final productId) => {...state, productId},
         ReviewsPage(:final id) => {for (final k in state) if (k != id) k},
-        _ => state,
       };
 }
 
-final loading = reviewsInFlightStore.containsIdOf(context);  // at the ambient id
+final loading = ledger.reviewsInFlight.containsIdOf(context);  // at the ambient id
 ```
 
-And because the WebSocket is itself a subscriber (`ledger.on<OutMsg>` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.
+And because the WebSocket is itself a subscriber (`ledger.at(.exit).msgs<OutMsg>()` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.
 
 ## Ambient identity: the deictic reads and verbs
 
