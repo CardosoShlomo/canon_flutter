@@ -280,6 +280,13 @@ extension UnitRead<S, M extends Msg> on UnitMemory<S, M> {
   S of(BuildContext context) => _StoreHostState.readUnit(context, this);
 }
 
+/// The identity read on an entity-holding unit: the state's OWN id,
+/// rebuilding ONLY when the identity changes — the unit's other fields churn
+/// (counts, flags) without waking readers of who-is-here.
+extension UnitIdRead<K, M extends Msg> on UnitMemory<Identifiable<K>?, M> {
+  K? idOf(BuildContext context) => _StoreHostState.readUnitId(context, this);
+}
+
 /// Membership of the context's ambient id in a SET unit — the in-flight
 /// idiom: `reviewsInFlightStore.containsIdOf(context)`. The set's ELEMENT
 /// type states which identity the unit is keyed by; the id resolves like
@@ -304,6 +311,7 @@ final class _StoreHostState extends State<StoreHost> {
   final Map<Object, _StoreWatch> _watches = {};
   final Map<Object, StreamSubscription<Object?>> _keyWatches = {};
   final Map<Object, int> _versions = {};
+  final Map<Object, Object?> _lastIds = {};
 
   static List<K> read<K, E extends Identifiable<K>>(
       BuildContext context, StoreMemory<K, E, Msg> store) {
@@ -344,6 +352,28 @@ final class _StoreHostState extends State<StoreHost> {
     });
     InheritedModel.inheritFrom<_StoreModel>(context, aspect: memory);
     return memory.state;
+  }
+
+  /// Per-IDENTITY subscription: the aspect `(memory, #id)` bumps only when
+  /// the state's id changes, so id readers sleep through field churn.
+  static K? readUnitId<K, M extends Msg>(
+      BuildContext context, UnitMemory<Identifiable<K>?, M> memory) {
+    final host = context.findAncestorStateOfType<_StoreHostState>();
+    assert(host != null,
+        'no StoreHost above this context — is the app under canon\'s delegate?');
+    final aspect = (memory, #id);
+    if (!host!._keyWatches.containsKey(aspect)) {
+      host._lastIds[memory] = memory.state?.id;
+      host._keyWatches[aspect] = memory.changes.listen((_) {
+        final id = memory.state?.id;
+        if (id == host._lastIds[memory]) return;
+        host._lastIds[memory] = id;
+        host.setState(
+            () => host._versions[aspect] = (host._versions[aspect] ?? 0) + 1);
+      });
+    }
+    InheritedModel.inheritFrom<_StoreModel>(context, aspect: aspect);
+    return memory.state?.id;
   }
 
   List<Object?> _watch<K, E extends Identifiable<K>>(

@@ -1,3 +1,7 @@
+## 0.11.0
+
+- `UnitMemory.idOf(context)` — the identity read; rebuilds only when the state's id changes.
+
 ## 0.10.0
 
 - canon ^0.30.0 (regent 0.12: `Regency` graphs, CRUD bricks; the @regents enum retires).
