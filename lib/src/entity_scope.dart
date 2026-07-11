@@ -343,7 +343,7 @@ final class _StoreHostState extends State<StoreHost> {
           () => host._versions[memory] = (host._versions[memory] ?? 0) + 1);
     });
     InheritedModel.inheritFrom<_StoreModel>(context, aspect: memory);
-    return memory.value;
+    return memory.state;
   }
 
   List<Object?> _watch<K, E extends Identifiable<K>>(
