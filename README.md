@@ -1,6 +1,6 @@
 # canon_flutter
 
-**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens, entities, and IDENTITY into the widget tree, and turns the store engine into reactive context reads: `ledger.products.entityOf(context, id)`, `ledger.viewer.of(context)`, `ledger.products.item(id, child:)`, the deictic `ProductID.navOf(context)` faces, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
+**The Flutter binding for the canon runtime — the package a Flutter app installs.** It hosts the router (`Screen.manager` is your `routerDelegate`), scopes screens, entities, and IDENTITY into the widget tree, and turns the store engine into reactive context reads: `products.entityOf(context, id)`, `viewer.of(context)`, `shopper.idOf(context)` (the identity alone — field churn never wakes it), `products.item(id, child:)`, the deictic `ProductID.navOf(context)` faces, `Query`/`Fragment` view-state — surgical rebuilds (per key, per unit, structure-only for lists) as the *default*, not as selector discipline.
 
 The system it binds: **an application runtime context specification.** You declare your app's runtime contexts as grammar trees — screens, entities, stores — and canon projects that spec into navigation, the URL, and state. Everything else hangs off that essence as a property: *compile-safety* is how the projection is realized, and *identity*, when a context has one, is a property **of the context** — ambient within it, read from the runtime, never threaded through application code.
 
@@ -277,12 +277,20 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
+// Consumer-named rows — the audit list; the generator hangs the reads on
+// these names (`products.of(context)`), it never invents its own.
+const cart = Cart();
+const catalogCovered = CatalogCovered();
+const localProducts = LocalProducts();
+const products = Products();
+
 @canon
 const app = Regency({
-  Cart(),          // Unit — folds the keyless cart facts
+  cart,            // Unit — folds the keyless cart facts
+  catalogCovered,  // coverage — the gate reads it
   CatalogGate(),   // a VETO row: judges the flow for rows below
-  LocalProducts(), // the disk-cache shadow
-  Products(),      // Store<ProductId, Product, ProductMsg>
+  localProducts,   // the disk-cache shadow
+  products,        // Store<ProductId, Product, ProductMsg>
 }, merges: {
   // Merge edges: a store READS-FROM another through a projection that
   // carries its own endpoints (the shadow/self patterns).
@@ -290,23 +298,40 @@ const app = Regency({
 });
 
 /// A guard judges the ledger's OWN state by regent identity — pure,
-/// replayable, positioned. `read(const X())` is checked at build time:
-/// the instance must name a row of the graph.
+/// replayable, positioned. Every `read(…)` is checked at build time:
+/// the named instance must be a row of the graph.
 final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();
   @override
   bool block(CatalogCacheMsg msg, ReadStore read) =>
-      read(const CatalogCovered());
+      read(catalogCovered);
 }
 ```
 
-The runtime builds the ledger (`Ledger.root(app)` splices rows and wires merges); codegen adds the NAMES — one typed getter per row (`ledger.products`, sugar over `ledger.at(const Products())`) — plus surgical **tree ops** derived from the ownership graph (`addReview(productId, review)` and friends). The reads are where this package earns its name — reactive, with the engine deciding granularity **once** instead of every consumer re-deriving it:
+YOU name the rows — const globals, the app's audit list (`const products =
+Products();`); const canonicalization makes the global and any equal
+construction one instance, so the name IS the row. The runtime builds the
+ledger (`Ledger.root(app)` splices rows and wires merges); codegen hangs a
+read extension on each row CLASS — the generator never invents a name, it
+makes YOUR names the whole surface — plus surgical **tree ops** derived
+from the ownership graph (`addReview(productId, review)` and friends). The
+reads are where this package earns its name — reactive, with the engine
+deciding granularity **once** instead of every consumer re-deriving it:
 
 ```dart
-final ids = ledger.products.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
-final product = ledger.products.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
-final cart = ledger.cart.of(context);                  // the unit's state
-ledger.products.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed
+final ids = products.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
+final product = products.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
+final cartState = cart.of(context);             // the unit's state
+products.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed
+```
+
+A unit whose state is `Identifiable` splits WHO from WHAT: the generated
+`idOf(context)` subscribes to the identity alone — profile fields churning
+never wake it, only a sign-in/out does — and `shopper.id` is its now-read
+twin:
+
+```dart
+final who = shopper.idOf(context);  // rebuilds ONLY when the id changes
 ```
 
 No selectors, no `listEquals` discipline: the store's fold already computed which keys changed and whether the key *sequence* changed (the `structure` feed), so a value edit rebuilds one card and a list shell rebuilds only when membership does.
@@ -327,7 +352,7 @@ final class ReviewsInFlight extends Unit<Set<ProductId>, ReviewsInFlightMsg> {
       };
 }
 
-final loading = ledger.reviewsInFlight.containsIdOf(context);  // at the ambient id
+final loading = reviewsInFlight.containsIdOf(context);  // at the ambient id
 ```
 
 And because the WebSocket is itself a subscriber (`ledger.at(.exit).msgs<OutMsg>()` sends), **`dispatch(fact)` is the app's only verb** — top-level, no prefix: the same call states a local fact, sends a request, and marks its key in flight.

@@ -1,3 +1,7 @@
+## 0.11.1
+
+- Docs: consumer-named row globals, the identity unit read.
+
 ## 0.11.0
 
 - `UnitMemory.idOf(context)` — the identity read; rebuilds only when the state's id changes.
