@@ -13,6 +13,7 @@ import 'entity_scope.dart';
 import 'history_engine.dart'
     if (dart.library.js_interop) 'history_engine_web.dart';
 import 'scopes.dart';
+import 'screen_graph.dart';
 
 /// Per-scope Flutter identity, hung off the engine's [NavScope] objects.
 final _navKeys = Expando<GlobalKey<NavigatorState>>();
@@ -24,12 +25,12 @@ GlobalKey<NavigatorState> _navKeyOf(NavScope scope) =>
 HeroController _heroOf(NavScope scope) => _heroes[scope] ??= HeroController();
 
 /// Default page when the consumer gives no `pageOf`: a platform Material page.
-Page<void> _defaultPageOf(Widget widget, PageCtx ctx, Object key) =>
-    MaterialPage<void>(key: key as LocalKey, child: widget);
+Page<void> _defaultPageOf(Widget widget, PageCtx ctx, LocalKey key) =>
+    MaterialPage<void>(key: key, child: widget);
 
 final _delegates = Expando<NavDelegate>();
 
-extension NavGraphFlutter on NavGraph {
+extension ScreenGraphFlutter on ScreenGraph {
   /// THE flutter host for this graph — created (and attached) on first read:
   /// `MaterialApp.router(routerDelegate: graph.delegate)`.
   NavDelegate get delegate => _delegates[this] ??= NavDelegate(this);
@@ -53,7 +54,7 @@ final class NavDelegate extends RouterDelegate<Object>
     }
   }
 
-  final NavGraph _graph;
+  final ScreenGraph _graph;
 
   @override
   GlobalKey<NavigatorState> get navigatorKey => _navKeyOf(_graph.activeScope);
@@ -78,9 +79,11 @@ final class NavDelegate extends RouterDelegate<Object>
     final ctx = PageCtx(screen, animate: slot.animate, from: slot.from);
     // canon owns the ScreenScope wrap — around the consumer's chrome too, so
     // chrome reads `context.screen` and the raw entry/id never reaches pageOf.
-    final raw = _graph.widgetOf(entry) as Widget;
-    final dressed =
-        _graph.chrome == null ? raw : _graph.chrome!(raw, ctx) as Widget;
+    // The boot entry's face is the graph's own `root`, never a row widget.
+    final raw = screen == BootScreen.root
+        ? _graph.root!
+        : _graph.widgetOf(entry) as Widget;
+    final dressed = _graph.chrome?.call(raw, ctx) ?? raw;
     final content = ScreenScope(entry: entry, child: dressed);
     final build = _graph.pageOf ?? _defaultPageOf;
     return build(
@@ -91,14 +94,14 @@ final class NavDelegate extends RouterDelegate<Object>
           : _graph.isMulti(screen)
               ? UniqueKey()
               : ValueKey(screen.name),
-    ) as Page<void>;
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     // On a bare floor (a bounce that found nothing behind), the live stack is
     // stale — show the consumer's root widget, which reads `Screen.root.kind`.
-    if (_graph.rootKind != null) return _graph.bootWidget as Widget;
+    if (_graph.rootKind != null) return _graph.root!;
     final visited = _graph.visitedTrunks;
     return StoreHost(
       child: ViewModel(
@@ -127,10 +130,7 @@ final class NavDelegate extends RouterDelegate<Object>
                 controller: _heroOf(_graph.scopeFor(trunk)!),
                 child: Navigator(
                   key: _navKeyOf(_graph.scopeFor(trunk)!),
-                  observers: [
-                    for (final o in _graph.observers())
-                      o as NavigatorObserver,
-                  ],
+                  observers: _graph.observers(),
                   pages: [
                     for (final s in _graph.scopeFor(trunk)!.slots) _pageFor(s),
                   ],
@@ -182,7 +182,7 @@ final class ScreenManager extends StatelessWidget {
   ScreenManager(this.graph, {super.key, this.restorationId = 'nav'})
       : delegate = NavDelegate(graph);
 
-  final NavGraph graph;
+  final ScreenGraph graph;
   final String restorationId;
   final NavDelegate delegate;
 

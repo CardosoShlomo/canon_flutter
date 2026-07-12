@@ -23,7 +23,7 @@ class _Init implements RootScreenBase {
 }
 
 void main() {
-  final graph = NavGraph(
+  final graph = ScreenGraph(
     {
       W.home(),
       W.author({

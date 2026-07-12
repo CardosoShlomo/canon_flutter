@@ -29,7 +29,7 @@ class _Init implements RootScreenBase {
   final List<(Enum, Object?)> chain;
 }
 
-NavGraph _mk() => NavGraph(
+ScreenGraph _mk() => ScreenGraph(
       {
         C.room({
           C.guest({C.booking.inherit(C.room, C.guest)}),

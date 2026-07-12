@@ -13,7 +13,7 @@ enum R with ScreenNode<R> {
   Widget get widget => const SizedBox.shrink();
 }
 
-NavGraph _boot() => NavGraph(
+ScreenGraph _boot() => ScreenGraph(
       {R.home(), R.feed()},
       root: const SizedBox.shrink(),
       pageOf: (w, c, k) => MaterialPage(child: w),

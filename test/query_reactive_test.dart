@@ -37,7 +37,7 @@ class _Body extends StatelessWidget {
 void main() {
   testWidgets('Query.of reads + rebuilds only when its key changes',
       (tester) async {
-    final graph = NavGraph(
+    final graph = ScreenGraph(
       {
         V.feed().query({
           FeedKeys.category(Codec.string),

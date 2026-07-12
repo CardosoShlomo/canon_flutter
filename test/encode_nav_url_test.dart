@@ -18,7 +18,7 @@ enum S with ScreenNode<S> {
 }
 
 void main() {
-  final graph = NavGraph(
+  final graph = ScreenGraph(
     {
       S.home({S.settings()}),
       S.author(),

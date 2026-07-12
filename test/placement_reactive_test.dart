@@ -39,7 +39,7 @@ class _Home extends StatelessWidget {
 void main() {
   testWidgets('Placement.isOn rebuilds only when its screen enters/leaves',
       (tester) async {
-    final graph = NavGraph(
+    final graph = ScreenGraph(
       {
         V.home({V.detail(), V.other()})
       },

@@ -46,7 +46,7 @@ class _Body extends StatelessWidget {
 
 void main() {
   testWidgets('ViewMatch.conds re-evaluates reactively on its key', (tester) async {
-    final graph = NavGraph(
+    final graph = ScreenGraph(
       {
         V.feed().query({FeedKeys.category(Codec.string)})
       },

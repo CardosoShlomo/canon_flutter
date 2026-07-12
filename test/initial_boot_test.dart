@@ -19,7 +19,7 @@ class _Init implements RootScreenBase {
   final List<(Enum, Object?)> chain;
 }
 
-NavGraph _boot() => NavGraph(
+ScreenGraph _boot() => ScreenGraph(
       {R.home(), R.feed()},
       root: const SizedBox.shrink(),
       pageOf: (w, c, k) => MaterialPage(child: w),

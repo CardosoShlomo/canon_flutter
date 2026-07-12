@@ -43,7 +43,7 @@ enum _Screens with ScreenNode<_Screens> {
   @override
   final Ids? id;
 
-  static final graph = NavGraph(
+  static final graph = ScreenGraph(
     {
       Domain('https://shop.example'),
       // `keep`: the catalog's stack survives switching to another trunk.

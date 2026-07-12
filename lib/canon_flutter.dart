@@ -11,3 +11,4 @@ export 'package:canon/canon.dart' hide NavScope, NavSlot;
 export 'src/scopes.dart' hide ViewModel, PlacementModel, ScopeLiveness, IdEntry;
 export 'src/entity_scope.dart';
 export 'src/router.dart';
+export 'src/screen_graph.dart';

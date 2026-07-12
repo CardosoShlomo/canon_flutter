@@ -1,3 +1,8 @@
+## 0.12.0
+
+- canon ^0.31.0 (the grammar reads `.again`; `.cycled` retired).
+- `ScreenGraph` — the face-bearing graph construction: `root`/`chrome`/`pageOf`/`observers` typed here; `.delegate` and `ScreenManager` take it.
+
 ## 0.11.1
 
 - Docs: consumer-named row globals, the identity unit read.

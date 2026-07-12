@@ -385,6 +385,10 @@ final class Hop<N extends AnyNav> {
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
+
+  /// The screen this hop lands on — the total projection
+  /// (the inverse needs an id, so it stays a Hop ctor).
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static const catalog = Hop<CatalogNav>._(
     _Screens.catalog,
     null,
@@ -589,6 +593,8 @@ sealed class Place extends Url implements Hop<AnyNav> {
   Object? get id => chain.last.$2;
   @override
   AnyNav get nav => _atOf(_Screens.graph.current);
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static _WLCatalog get catalog => _WLCatalog._([_Screens.catalog], [null]);
   static _WLCatalogProduct product(ProductId id) =>
       _WLCatalogProduct._([_Screens.catalog, _Screens.product], [null, id]);
@@ -702,6 +708,8 @@ final class _WLCatalog implements Hop<CatalogNav> {
   Object? get id => _i.last;
   @override
   CatalogNav get nav => const CatalogNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLCatalogProduct product(ProductId id) =>
       _WLCatalogProduct._([..._s, _Screens.product], [..._i, id]);
   _WLCatalogQ query(Set<CatalogQueryArg> q) =>
@@ -742,6 +750,8 @@ final class _WLCatalogProduct implements Hop<ProductNav> {
   Object? get id => _i.last;
   @override
   ProductNav get nav => const ProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -761,6 +771,8 @@ final class _WLOrders implements Hop<OrdersNav> {
   Object? get id => _i.last;
   @override
   OrdersNav get nav => const OrdersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -780,6 +792,8 @@ final class _WLAbout implements Hop<AboutNav> {
   Object? get id => _i.last;
   @override
   AboutNav get nav => const AboutNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );

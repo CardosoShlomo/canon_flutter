@@ -19,7 +19,7 @@ class _Init implements RootScreenBase {
   final List<(Enum, Object?)> chain;
 }
 
-NavGraph _mk() => NavGraph(
+ScreenGraph _mk() => ScreenGraph(
       {
         V.home(),
         V.feed().query({

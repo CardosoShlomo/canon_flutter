@@ -14,9 +14,9 @@ enum N with ScreenNode<N> {
   Codec<Object?>? get id =>
       (this == profile || this == review) ? Codec.string : null;
 
-  static N _profile() => profile({profile.cycled, review({profile.cycled})});
+  static N _profile() => profile({profile.again, review({profile.again})});
 
-  static NavGraph graph() => NavGraph(
+  static ScreenGraph graph() => ScreenGraph(
         {
           home.keep({_profile()}),
           feed({_profile()}),
@@ -79,7 +79,7 @@ enum K with ScreenNode<K> {
   @override
   Widget get widget => _Track(name);
 
-  static NavGraph graph() => NavGraph(
+  static ScreenGraph graph() => ScreenGraph(
         {
           home({services({shop.keep()})}),
           other,
@@ -96,7 +96,7 @@ class _InitK implements RootScreenBase {
 }
 
 void main() {
-  Future<NavGraph> pump(WidgetTester tester) async {
+  Future<ScreenGraph> pump(WidgetTester tester) async {
     final graph = N.graph();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: graph.delegate));
     return graph;
@@ -203,7 +203,7 @@ void main() {
   });
 
   testWidgets('root seeds a multi-entry starting stack', (tester) async {
-    final graph = NavGraph(
+    final graph = ScreenGraph(
       {N.home.keep({N._profile()}), N.feed()},
       seedChain: const _Init([(N.home, null), (N.profile, 'p')]),
       pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
@@ -365,14 +365,17 @@ void main() {
     expect(stack.current, N.profile);
   });
 
-  testWidgets('repeat-collapse pops back through the cycle', (tester) async {
+  testWidgets('repeated blocks never fold — the cycle grows the stack',
+      (tester) async {
+    // Cycle collapsing was removed with `.cycled`; a consumer who wants a
+    // fold inspects the live stack and pops explicitly.
     final graph = await pump(tester);
     graph.go(N.profile, 'a').go(N.review, 'c').go(N.profile, 'a');
     await tester.pumpAndSettle();
     expect(graph.stack.length, 4);
-    graph.go(N.review, 'c'); // completes the period-2 block -> collapse
+    graph.go(N.review, 'c'); // completes the period-2 block -> pushes fresh
     await tester.pumpAndSettle();
-    expect(graph.stack.length, 3);
+    expect(graph.stack.length, 5);
     expect(find.text('review:c'), findsOneWidget);
   });
 
