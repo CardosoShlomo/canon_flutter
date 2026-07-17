@@ -1,3 +1,7 @@
+## 0.12.1
+
+- README regency example on the one-store cache pattern.
+
 ## 0.12.0
 
 - canon ^0.31.0 (the grammar reads `.again`; `.cycled` retired).

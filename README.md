@@ -285,7 +285,6 @@ enum _Entities with EntityNode<_Entities> {
 // these names (`products.of(context)`), it never invents its own.
 const cart = Cart();
 const catalogCovered = CatalogCovered();
-const localProducts = LocalProducts();
 const products = Products();
 
 @canon
@@ -293,12 +292,12 @@ const app = Regency({
   cart,            // Unit — folds the keyless cart facts
   catalogCovered,  // coverage — the gate reads it
   CatalogGate(),   // a VETO row: judges the flow for rows below
-  localProducts,   // the disk-cache shadow
-  products,        // Store<ProductId, Product, ProductMsg>
+  products,        // Store<ProductId, Product, ProductMsg> — the disk
+                   // cache folds in as an absence-only arm
 }, merges: {
   // Merge edges: a store READS-FROM another through a projection that
-  // carries its own endpoints (the shadow/self patterns).
-  LocalProductSupports(),
+  // carries its own endpoints (the dock/self patterns).
+  WriteSupportsCart(),
 });
 
 /// A guard judges the ledger's OWN state by regent identity — pure,
