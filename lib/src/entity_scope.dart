@@ -83,7 +83,18 @@ final class _EntityScopeState<K, E extends Identifiable<K>>
 
   // A removed entity keeps its last value: removal is the OWNING LIST's fact
   // (its length changes and the item unmounts); the scope never flashes null.
-  void _read() => _entity = widget.store[widget.id] ?? _entity;
+  // A lazily-mounting item can race that fact — the sliver materializes a
+  // child for an id deleted since the list's build — so absence at mount is
+  // survivable: the scope renders nothing until the owning list catches up.
+  void _read() {
+    final entity = widget.store[widget.id];
+    if (entity != null) {
+      _entity = entity;
+      _has = true;
+    }
+  }
+
+  bool _has = false;
 
   void _listen() => _sub = widget.store.changes
       .where((k) => k == widget.id)
@@ -96,19 +107,23 @@ final class _EntityScopeState<K, E extends Identifiable<K>>
   }
 
   @override
-  Widget build(BuildContext context) =>
-      // The scope plants its id too: identity ambience (IdScope.of) works
-      // under an EntityScope without a second wrapper. The node comes from
-      // the store's tag (generated bind() knows the grammar association).
-      IdEntry(
-          id: widget.id,
-          node: IdScope.nodeOf(widget.store),
-          parent: context.getInheritedWidgetOfExactType<IdEntry>(),
-          child: _EntityEntry(
-              entity: _entity,
-              id: widget.id,
-              store: widget.store,
-              child: widget.child));
+  Widget build(BuildContext context) {
+    // Mounted for an already-deleted id (the lazy-sliver race): nothing to
+    // scope — the owning list drops this item on its next build.
+    if (!_has) return const SizedBox.shrink();
+    // The scope plants its id too: identity ambience (IdScope.of) works
+    // under an EntityScope without a second wrapper. The node comes from
+    // the store's tag (generated bind() knows the grammar association).
+    return IdEntry(
+        id: widget.id,
+        node: IdScope.nodeOf(widget.store),
+        parent: context.getInheritedWidgetOfExactType<IdEntry>(),
+        child: _EntityEntry(
+            entity: _entity,
+            id: widget.id,
+            store: widget.store,
+            child: widget.child));
+  }
 }
 
 /// Identity ambience without data: plants ONE id over an item subtree, so

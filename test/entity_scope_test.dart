@@ -85,6 +85,25 @@ void main() {
     expect(EntityScope.idOf<String>(context), 'b');
   });
 
+  testWidgets('EntityScope: mounting for an absent id renders nothing, no crash',
+      (tester) async {
+    builds.clear();
+    final ledger = Ledger();
+    final store = ledger.store(const Products());
+    // The lazy-sliver race: a child materializes for an id the store no
+    // longer holds. The scope must survive the mount and render nothing.
+    await tester.pumpWidget(
+        EntityScope(store, 'ghost', child: const ProductCard()));
+    expect(tester.takeException(), isNull);
+    expect(builds, isEmpty);
+
+    // The entity arriving later fills the scope in place.
+    ledger.dispatch(const ProductsMsg([Product(id: 'ghost', title: 'boo')]));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('ghost:boo'), findsOneWidget);
+  });
+
   testWidgets('StoreBuilder: list build re-runs ONLY on add/remove/reorder',
       (tester) async {
     builds.clear();

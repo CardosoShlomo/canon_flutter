@@ -1,3 +1,7 @@
+## 0.12.2
+
+- EntityScope survives mounting for an id absent from the store.
+
 ## 0.12.1
 
 - README regency example on the one-store cache pattern.
