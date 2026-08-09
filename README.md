@@ -282,7 +282,7 @@ enum _Entities with EntityNode<_Entities> {
 }
 
 // Consumer-named rows — the audit list; the generator hangs the reads on
-// these names (`products.of(context)`), it never invents its own.
+// these names (`products.idsOf(context)`), it never invents its own.
 const cart = Cart();
 const catalogCovered = CatalogCovered();
 const products = Products();
@@ -322,7 +322,8 @@ reads are where this package earns its name — reactive, with the engine
 deciding granularity **once** instead of every consumer re-deriving it:
 
 ```dart
-final ids = products.of(context);               // key SEQUENCE — rebuilds on add/remove/reorder ONLY
+final ids = products.idsOf(context);            // key SEQUENCE — rebuilds on add/remove/reorder ONLY
+final rows = products.entitiesOf(context);      // the ROWS — rebuilds on shape AND on any row's value
 final product = products.entityOf(context, id); // ONE entity, nullable — rebuilds when THIS key changes
 final cartState = cart.of(context);             // the unit's state
 products.item(id, child: ProductCard());        // list item: plants the EntityScope, self-keyed

@@ -147,7 +147,7 @@ void main() {
     expect(builds['b'], 1); // untouched neighbor never rebuilt
   });
 
-  testWidgets('store.of(context): reactive ids read through the StoreHost',
+  testWidgets('store.idsOf(context): reactive ids read through the StoreHost',
       (tester) async {
     builds.clear();
     var listBuilds = 0;
@@ -157,7 +157,7 @@ void main() {
 
     await tester.pumpWidget(StoreHost(
       child: Builder(builder: (context) {
-        final ids = store.of(context);
+        final ids = store.idsOf(context);
         listBuilds++;
         return Column(
           children: [
@@ -185,6 +185,40 @@ void main() {
     await tester.pump();
     expect(listBuilds, 2);
     expect(find.text('b:two'), findsOneWidget);
+  });
+
+  testWidgets('store.entitiesOf(context): rebuilds on shape AND row values',
+      (tester) async {
+    var listBuilds = 0;
+    late List<Product> seen;
+    final ledger = Ledger();
+    final store = ledger.store(const Products());
+    ledger.dispatch(const ProductsMsg([Product(id: 'a', title: 'one')]));
+
+    await tester.pumpWidget(StoreHost(
+      child: Builder(builder: (context) {
+        seen = store.entitiesOf(context);
+        listBuilds++;
+        return Column(children: [for (final _ in seen) const SizedBox()]);
+      }),
+    ));
+    expect(listBuilds, 1);
+    expect(seen.single.title, 'one');
+
+    ledger.dispatch(const TitleChangedMsg('a', 'uno'));
+    await tester.pump();
+    await tester.pump();
+    expect(listBuilds, 2);
+    expect(seen.single.title, 'uno');
+
+    ledger.dispatch(const ProductsMsg([
+      Product(id: 'a', title: 'uno'),
+      Product(id: 'b', title: 'two'),
+    ]));
+    await tester.pump();
+    await tester.pump();
+    expect(listBuilds, 3);
+    expect(seen.length, 2);
   });
 
   testWidgets('store.entityOf(context, id): nullable per-key value read',

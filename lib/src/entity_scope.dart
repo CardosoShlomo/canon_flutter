@@ -252,13 +252,20 @@ final class _StoreBuilderState<K, E extends Identifiable<K>>
       widget.builder(context, [...widget.store.entities.keys]);
 }
 
-/// Reactive ids read, no builder: `final ids = adsStore.of(context);` —
-/// subscribes the widget to THIS store's key SEQUENCE (add/remove/reorder);
-/// value-only changes never rebuild it (items handle those via [EntityScope]).
+/// The two reactive collection reads, no builder. A store is many, so the
+/// read must answer "of what?": [idsOf] for the key sequence, [entitiesOf]
+/// for the rows themselves.
 extension StoreRead<K, E extends Identifiable<K>> on StoreMemory<K, E, Msg> {
   /// The key SEQUENCE, reactively — rebuilds on add/remove/reorder only
-  /// (the engine's `structure` feed); value changes never fire here.
-  List<K> of(BuildContext context) => _StoreHostState.read(context, this);
+  /// (the engine's `structure` feed); value changes NEVER fire here, so the
+  /// consumer must scope each row with [item] / [entityOf] to see its data.
+  List<K> idsOf(BuildContext context) => _StoreHostState.read(context, this);
+
+  /// The ROWS, reactively — rebuilds on add/remove/reorder AND on ANY row's
+  /// value change. The honest read for a widget that composes across rows
+  /// (sums, filters, joins); costlier than [idsOf] by exactly that.
+  List<E> entitiesOf(BuildContext context) =>
+      _StoreHostState.readEntities(context, this);
 
   /// The keyed reactive read: the entity at [id], or — with [id] omitted —
   /// at the context's AMBIENT id, resolved at THIS store's own node (the
@@ -312,7 +319,7 @@ extension UnitSetRead<K, M extends Msg> on UnitMemory<Set<K>, M> {
 }
 
 /// Hosted by the delegate above the navigators: the self-populating registry
-/// backing [StoreRead.of] — a store is subscribed on its first read.
+/// backing [StoreRead.idsOf] — a store is subscribed on its first read.
 final class StoreHost extends StatefulWidget {
   const StoreHost({super.key, required this.child});
 
@@ -336,6 +343,28 @@ final class _StoreHostState extends State<StoreHost> {
     final ids = host!._watch(store);
     InheritedModel.inheritFrom<_StoreModel>(context, aspect: store);
     return ids.cast<K>();
+  }
+
+  static List<E> readEntities<K, E extends Identifiable<K>>(
+      BuildContext context, StoreMemory<K, E, Msg> store) {
+    final host = context.findAncestorStateOfType<_StoreHostState>();
+    assert(host != null,
+        'no StoreHost above this context — is the app under canon\'s delegate?');
+    host!._watch(store);
+    host._watchAnyKey(store);
+    InheritedModel.inheritFrom<_StoreModel>(context, aspect: store);
+    InheritedModel.inheritFrom<_StoreModel>(context, aspect: (store, #any));
+    return [...store.entities.values];
+  }
+
+  /// One aspect for EVERY value change in [store] — what separates
+  /// [StoreRead.entitiesOf] from the structure-only [StoreRead.idsOf].
+  void _watchAnyKey<K, E extends Identifiable<K>>(
+      StoreMemory<K, E, Msg> store) {
+    final aspect = (store, #any);
+    _keyWatches[aspect] ??= store.changes.listen((_) {
+      setState(() => _versions[aspect] = (_versions[aspect] ?? 0) + 1);
+    });
   }
 
   static E? readKey<K, E extends Identifiable<K>>(
