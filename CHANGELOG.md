@@ -1,3 +1,7 @@
+## 0.13.0
+
+- A store read says which subscription it means: `idsOf` for the key sequence, `entitiesOf` for the rows. `of` is gone — it read ids while looking like it read entities, and a screen that summed or filtered subscribed to the wrong thing.
+
 ## 0.12.2
 
 - EntityScope survives mounting for an id absent from the store.
