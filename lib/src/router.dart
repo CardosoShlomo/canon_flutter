@@ -41,7 +41,7 @@ extension ScreenGraphFlutter on ScreenGraph {
 final class NavDelegate extends RouterDelegate<Object>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<Object>
     implements NavHost {
-  NavDelegate(this._graph) {
+  NavDelegate(this._graph, {this.restorationId = 'nav'}) {
     _graph.attachHost(this);
     if (_graph.ownsHistory) {
       // Flutter-engine settings for canon-owned web history: clean path URLs +
@@ -49,29 +49,51 @@ final class NavDelegate extends RouterDelegate<Object>
       // first frame can re-assert single-entry).
       usePathUrls();
       enableMultiEntryHistory();
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => enableMultiEntryHistory());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => enableMultiEntryHistory(),
+      );
     }
   }
 
   final ScreenGraph _graph;
 
+  /// Scope the snapshot is stored under. Both mount paths run through this
+  /// delegate, so restoration is never a property of which one was picked.
+  final String restorationId;
+
   @override
   GlobalKey<NavigatorState> get navigatorKey => _navKeyOf(_graph.activeScope);
 
   @override
-  void notify() => notifyListeners();
+  void notify() {
+    if (!_restoring) notifyListeners();
+  }
 
   @override
   void refresh() {
     _graph.writeHistory();
-    notifyListeners();
+    if (!_restoring) notifyListeners();
+  }
+
+  /// A restore lands while the tree that hosts it is building, so the graph's
+  /// notification would mark an ancestor dirty mid-build. The build in flight
+  /// reads the restored graph anyway — it has not reached the stack yet.
+  bool _restoring = false;
+
+  void _restoreFrom(Map<String, Object?> state) {
+    _restoring = true;
+    try {
+      _graph.restore(state);
+    } finally {
+      _restoring = false;
+    }
   }
 
   @override
   void completeRebuild() => _graph.completeHistoryRebuild();
 
-  Page<void> _pageFor(NavSlot slot) => (slot.page ??= _buildPage(slot)) as Page<void>;
+  Page<void> _pageFor(NavSlot slot) =>
+      (slot.page ??= _buildPage(slot)) as Page<void>;
 
   Page<void> _buildPage(NavSlot slot) {
     final entry = slot.entry;
@@ -92,13 +114,18 @@ final class NavDelegate extends RouterDelegate<Object>
       screen == BootScreen.root
           ? const ValueKey('__boot__')
           : _graph.isMulti(screen)
-              ? UniqueKey()
-              : ValueKey(screen.name),
+          ? UniqueKey()
+          : ValueKey(screen.name),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => RootRestorationScope(
+    restorationId: restorationId,
+    child: _Restored(this, builder: _content),
+  );
+
+  Widget _content(BuildContext context) {
     // On a bare floor (a bounce that found nothing behind), the live stack is
     // stale — show the consumer's root widget, which reads `Screen.root.kind`.
     if (_graph.rootKind != null) return _graph.root!;
@@ -154,10 +181,55 @@ final class NavDelegate extends RouterDelegate<Object>
   Future<void> setNewRoutePath(Object configuration) {
     if (configuration is RouteInformation) {
       _graph.routeFromBrowser(
-          configuration.uri.toString(), configuration.state);
+        configuration.uri.toString(),
+        configuration.state,
+      );
     }
     return SynchronousFuture(null);
   }
+}
+
+/// Holds the nav snapshot in the restoration bucket: reads it back when the OS
+/// returns a killed process's state, and writes it on every commit. A cold
+/// launch (swipe-away, or a task Android has expired) brings back no bucket
+/// value, so the graph keeps its seed.
+class _Restored extends StatefulWidget {
+  const _Restored(this.delegate, {required this.builder});
+
+  final NavDelegate delegate;
+  final WidgetBuilder builder;
+
+  @override
+  State<_Restored> createState() => _RestoredState();
+}
+
+class _RestoredState extends State<_Restored> with RestorationMixin {
+  final RestorableStringN _snap = RestorableStringN(null);
+  VoidCallback? _off;
+
+  @override
+  String? get restorationId => 'canon_nav';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_snap, 'stack');
+    final graph = widget.delegate._graph;
+    final s = _snap.value;
+    if (s != null) {
+      widget.delegate._restoreFrom(jsonDecode(s) as Map<String, Object?>);
+    }
+    _off ??= graph.observe((_, _) => _snap.value = jsonEncode(graph.toState()));
+  }
+
+  @override
+  void dispose() {
+    _off?.call();
+    _snap.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
 }
 
 /// Parses incoming browser [RouteInformation] for the Router. Pass-through: the
@@ -177,20 +249,18 @@ final class CanonRouteParser extends RouteInformationParser<Object> {
 /// Drop into `MaterialApp(home: ScreenManager(graph))`. Hosts the same nav
 /// tree as the delegate but with no Router/RouteInformation channel, so URLs
 /// and deep-links can't drive the stack — handle links imperatively. Owns
-/// system back; persists/restores the snapshot under [restorationId].
+/// system back; the delegate persists/restores the snapshot under
+/// [restorationId].
 final class ScreenManager extends StatelessWidget {
   ScreenManager(this.graph, {super.key, this.restorationId = 'nav'})
-      : delegate = NavDelegate(graph);
+    : delegate = NavDelegate(graph, restorationId: restorationId);
 
   final ScreenGraph graph;
   final String restorationId;
   final NavDelegate delegate;
 
   @override
-  Widget build(BuildContext context) => RootRestorationScope(
-        restorationId: restorationId,
-        child: _ManagerBody(graph, delegate),
-      );
+  Widget build(BuildContext context) => _ManagerBody(graph, delegate);
 }
 
 class _ManagerBody extends StatefulWidget {
@@ -204,10 +274,7 @@ class _ManagerBody extends StatefulWidget {
 }
 
 class _ManagerBodyState extends State<_ManagerBody>
-    with RestorationMixin, WidgetsBindingObserver {
-  final RestorableStringN _snap = RestorableStringN(null);
-  VoidCallback? _off;
-
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -219,24 +286,8 @@ class _ManagerBodyState extends State<_ManagerBody>
   Future<bool> didPopRoute() => widget.delegate.popRoute();
 
   @override
-  String? get restorationId => 'canon_nav';
-
-  @override
-  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    registerForRestoration(_snap, 'stack');
-    final s = _snap.value;
-    if (s != null) {
-      widget.graph.restore(jsonDecode(s) as Map<String, Object?>);
-    }
-    _off ??= widget.graph
-        .observe((_, _) => _snap.value = jsonEncode(widget.graph.toState()));
-  }
-
-  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _off?.call();
-    _snap.dispose();
     super.dispose();
   }
 

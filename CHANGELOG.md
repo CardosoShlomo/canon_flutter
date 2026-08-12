@@ -1,3 +1,7 @@
+## 0.13.1
+
+- BREAKING BEHAVIOUR: navigation now survives process death on every mount path. Restoration moved from `ScreenManager` onto `NavDelegate`, so `MaterialApp.router(routerDelegate:)` restores too — it never did. No consumer wiring: the delegate claims the root restoration bucket itself, and an app that relied on a cold start landing at the seed will now land where the user left.
+
 ## 0.13.0
 
 - A store read says which subscription it means: `idsOf` for the key sequence, `entitiesOf` for the rows. `of` is gone — it read ids while looking like it read entities, and a screen that summed or filtered subscribed to the wrong thing.

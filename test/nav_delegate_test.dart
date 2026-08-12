@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:canon_flutter/canon_flutter.dart';
 
 enum N with ScreenNode<N> {
-  home, feed, profile, review;
+  home,
+  feed,
+  profile,
+  review;
 
   @override
   Widget get widget => _Label(this);
@@ -14,16 +17,19 @@ enum N with ScreenNode<N> {
   Codec<Object?>? get id =>
       (this == profile || this == review) ? Codec.string : null;
 
-  static N _profile() => profile({profile.again, review({profile.again})});
+  static N _profile() => profile({
+    profile.again,
+    review({profile.again}),
+  });
 
   static ScreenGraph graph() => ScreenGraph(
-        {
-          home.keep({_profile()}),
-          feed({_profile()}),
-        },
-        seedChain: const _Init([(home, null)]),
-        pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
-      );
+    {
+      home.keep({_profile()}),
+      feed({_profile()}),
+    },
+    seedChain: const _Init([(home, null)]),
+    pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
+  );
 }
 
 // Renders `name:id` — reads its own runtime id via the in-package idOf primitive.
@@ -74,19 +80,24 @@ class _TrackState extends State<_Track> {
 
 // home > services > shop.keep — a deep keep; `other` is a separate root.
 enum K with ScreenNode<K> {
-  home, services, shop, other;
+  home,
+  services,
+  shop,
+  other;
 
   @override
   Widget get widget => _Track(name);
 
   static ScreenGraph graph() => ScreenGraph(
-        {
-          home({services({shop.keep()})}),
-          other,
-        },
-        seedChain: const _InitK([(home, null)]),
-        pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
-      );
+    {
+      home({
+        services({shop.keep()}),
+      }),
+      other,
+    },
+    seedChain: const _InitK([(home, null)]),
+    pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
+  );
 }
 
 class _InitK implements RootScreenBase {
@@ -146,8 +157,9 @@ void main() {
     expect(seen.last.destination, (N.profile, 'y'));
   });
 
-  testWidgets('markReplace flags the batched commit; resets per batch',
-      (tester) async {
+  testWidgets('markReplace flags the batched commit; resets per batch', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     final seen = <Navigation>[];
     final sub = graph.navigations.listen(seen.add);
@@ -167,8 +179,9 @@ void main() {
     expect(seen.last.mode, CommitMode.push);
   });
 
-  testWidgets('Screen.manager() mounts in MaterialApp.home; navigate + back',
-      (tester) async {
+  testWidgets('Screen.manager() mounts in MaterialApp.home; navigate + back', (
+    tester,
+  ) async {
     final graph = N.graph();
     await tester.pumpWidget(MaterialApp(home: ScreenManager(graph)));
     expect(find.text('home:'), findsOneWidget);
@@ -181,15 +194,33 @@ void main() {
     expect(find.text('home:'), findsOneWidget);
   });
 
-  testWidgets('manager(restorationId:) round-trips the snapshot', (tester) async {
+  testWidgets('manager(restorationId:) round-trips the snapshot', (
+    tester,
+  ) async {
     final g1 = N.graph();
     await tester.pumpWidget(
-        MaterialApp(restorationScopeId: 'app', home: ScreenManager(g1, restorationId: 'nav')));
+      MaterialApp(
+        restorationScopeId: 'app',
+        home: ScreenManager(g1, restorationId: 'nav'),
+      ),
+    );
     g1.go(N.profile, 'p');
     await tester.pumpAndSettle();
     await tester.restartAndRestore();
     expect(find.text('profile:p'), findsOneWidget);
   });
+
+  testWidgets(
+    'the router path restores too — the snapshot rides the delegate',
+    (tester) async {
+      final g = N.graph();
+      await tester.pumpWidget(MaterialApp.router(routerDelegate: g.delegate));
+      g.go(N.profile, 'p');
+      await tester.pumpAndSettle();
+      await tester.restartAndRestore();
+      expect(find.text('profile:p'), findsOneWidget);
+    },
+  );
 
   testWidgets('go pushes and pop returns', (tester) async {
     final graph = await pump(tester);
@@ -204,7 +235,10 @@ void main() {
 
   testWidgets('root seeds a multi-entry starting stack', (tester) async {
     final graph = ScreenGraph(
-      {N.home.keep({N._profile()}), N.feed()},
+      {
+        N.home.keep({N._profile()}),
+        N.feed(),
+      },
       seedChain: const _Init([(N.home, null), (N.profile, 'p')]),
       pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
     );
@@ -217,31 +251,37 @@ void main() {
     expect(find.text('home:'), findsOneWidget);
   });
 
-  testWidgets('id-bearing root: go(root, id) seeds the root id', (tester) async {
+  testWidgets('id-bearing root: go(root, id) seeds the root id', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     graph.go(N.feed, 'f'); // switch to the feed root WITH an id
     await tester.pumpAndSettle();
     expect(find.text('feed:f'), findsOneWidget); // stamped, not null
   });
 
-  testWidgets('inherit-from-root shape: chain off an id-bearing root keeps its id',
-      (tester) async {
-    final graph = await pump(tester);
-    graph.go(N.feed, 'f'); // kick-start to the root with the shared id
-    graph.go(N.profile, 'f', true); // ...edge down (rescue body shape)
-    await tester.pumpAndSettle();
-    expect(find.text('profile:f'), findsOneWidget);
-    graph.pop();
-    await tester.pumpAndSettle();
-    expect(find.text('feed:f'), findsOneWidget); // ancestor root id stamped
-  });
+  testWidgets(
+    'inherit-from-root shape: chain off an id-bearing root keeps its id',
+    (tester) async {
+      final graph = await pump(tester);
+      graph.go(N.feed, 'f'); // kick-start to the root with the shared id
+      graph.go(N.profile, 'f', true); // ...edge down (rescue body shape)
+      await tester.pumpAndSettle();
+      expect(find.text('profile:f'), findsOneWidget);
+      graph.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('feed:f'), findsOneWidget); // ancestor root id stamped
+    },
+  );
 
-
-  testWidgets('observe fires (from, to) per commit; disposer stops it',
-      (tester) async {
+  testWidgets('observe fires (from, to) per commit; disposer stops it', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     final seen = <String>[];
-    final off = graph.observe((from, to) => seen.add('${from.name}>${to.name}'));
+    final off = graph.observe(
+      (from, to) => seen.add('${from.name}>${to.name}'),
+    );
     graph.go(N.profile, 'a');
     await tester.pumpAndSettle();
     graph.go(N.review, 'c');
@@ -315,7 +355,10 @@ void main() {
     final graph = await pump(tester);
     graph.go(N.feed);
     await tester.pumpAndSettle();
-    graph.go(N.profile, 'x'); // profile's scope is feed? no — canonical root is home
+    graph.go(
+      N.profile,
+      'x',
+    ); // profile's scope is feed? no — canonical root is home
     await tester.pumpAndSettle();
     expect(graph.stack.length, 2);
     expect(find.text('profile:x'), findsOneWidget);
@@ -335,8 +378,9 @@ void main() {
     expect(graph.stack.length, 1); // home came back fresh
   });
 
-  testWidgets('forget throws on the active stack and on an unmounted keep',
-      (tester) async {
+  testWidgets('forget throws on the active stack and on an unmounted keep', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     // home is the active tab → forgetting it is illegal (not a pop).
     expect(() => graph.forget(N.home), throwsStateError);
@@ -355,18 +399,23 @@ void main() {
     expect(find.text('profile:a', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('NavStack views work (Screen.stack building block)', (tester) async {
+  testWidgets('NavStack views work (Screen.stack building block)', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     graph.go(N.profile, 'a').go(N.review, 'c').go(N.profile, 'b');
     await tester.pumpAndSettle();
-    final stack = NavStack([for (final e in graph.stack) NavEntry(e.screen, e.id)]);
+    final stack = NavStack([
+      for (final e in graph.stack) NavEntry(e.screen, e.id),
+    ]);
     expect(stack.screens, [N.home, N.profile, N.review, N.profile]);
     expect(stack.reachable, [N.profile, N.review, N.home]); // review survives
     expect(stack.current, N.profile);
   });
 
-  testWidgets('repeated blocks never fold — the cycle grows the stack',
-      (tester) async {
+  testWidgets('repeated blocks never fold — the cycle grows the stack', (
+    tester,
+  ) async {
     // Cycle collapsing was removed with `.cycled`; a consumer who wants a
     // fold inspects the live stack and pops explicitly.
     final graph = await pump(tester);
@@ -386,7 +435,9 @@ void main() {
     expect(find.text('profile:a'), findsOneWidget);
   });
 
-  testWidgets('edge-required go throws on an unreachable target', (tester) async {
+  testWidgets('edge-required go throws on an unreachable target', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     // feed is a sibling root, not an edge from home — the stale-handle case.
     expect(() => graph.go(N.feed, null, true), throwsStateError);
@@ -402,9 +453,14 @@ void main() {
     expect(() => graph.pop(N.feed), throwsStateError); // feed not in the stack
   });
 
-  testWidgets('self-pop reaches the previous occurrence, skipping the top', (tester) async {
+  testWidgets('self-pop reaches the previous occurrence, skipping the top', (
+    tester,
+  ) async {
     final graph = await pump(tester);
-    graph.go(N.profile, 'a').go(N.review, 'c').go(N.profile, 'b'); // [home, p:a, review, p:b]
+    graph
+        .go(N.profile, 'a')
+        .go(N.review, 'c')
+        .go(N.profile, 'b'); // [home, p:a, review, p:b]
     await tester.pumpAndSettle();
     graph.pop(N.profile); // self-pop: to the previous profile (a), not a no-op
     await tester.pumpAndSettle();
@@ -413,14 +469,18 @@ void main() {
     expect(graph.stack.length, 2); // [home, p:a]
   });
 
-  testWidgets('self-pop throws when there is no earlier occurrence', (tester) async {
+  testWidgets('self-pop throws when there is no earlier occurrence', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     graph.go(N.profile, 'a'); // only one profile
     await tester.pumpAndSettle();
     expect(() => graph.pop(N.profile), throwsStateError);
   });
 
-  testWidgets('countOf counts active-stack occurrences (cycle depth)', (tester) async {
+  testWidgets('countOf counts active-stack occurrences (cycle depth)', (
+    tester,
+  ) async {
     final graph = await pump(tester);
     graph.go(N.profile, 'a').go(N.review, 'c').go(N.profile, 'b');
     await tester.pumpAndSettle();
@@ -431,8 +491,9 @@ void main() {
     expect(graph.countOf(N.feed), 0); // parked tab, not the active stack
   });
 
-  testWidgets('parked tab keeps the kept subtree alive, frees the prefix',
-      (tester) async {
+  testWidgets('parked tab keeps the kept subtree alive, frees the prefix', (
+    tester,
+  ) async {
     _inits.clear();
     _disposes.clear();
     final graph = K.graph();
@@ -459,59 +520,71 @@ void main() {
     expect(_disposes['shop'], isNull);
   });
 
-  testWidgets('restoration round-trips every scope (active + parked) with ids',
-      (tester) async {
-    final g1 = N.graph();
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
-    g1.go(N.profile, 'p'); // home -> profile:p
-    await tester.pumpAndSettle();
-    g1.go(N.feed); // switch scopes; home parks (it is a keep) holding profile:p
-    await tester.pumpAndSettle();
+  testWidgets(
+    'restoration round-trips every scope (active + parked) with ids',
+    (tester) async {
+      final g1 = N.graph();
+      await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
+      g1.go(N.profile, 'p'); // home -> profile:p
+      await tester.pumpAndSettle();
+      g1.go(
+        N.feed,
+      ); // switch scopes; home parks (it is a keep) holding profile:p
+      await tester.pumpAndSettle();
 
-    final snap = g1.toState();
-    expect(snap['active'], 'feed');
+      final snap = g1.toState();
+      expect(snap['active'], 'feed');
 
-    // Fresh graph (simulates process death) restores from the snapshot.
-    final g2 = N.graph();
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: g2.delegate));
-    expect(g2.restore(snap), isTrue);
-    await tester.pumpAndSettle();
+      // Fresh graph (simulates process death) restores from the snapshot.
+      final g2 = N.graph();
+      await tester.pumpWidget(MaterialApp.router(routerDelegate: g2.delegate));
+      expect(g2.restore(snap), isTrue);
+      await tester.pumpAndSettle();
 
-    // Active scope restored.
-    expect(g2.current, N.feed);
-    expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(),
-        ['feed:null']);
+      // Active scope restored.
+      expect(g2.current, N.feed);
+      expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(), [
+        'feed:null',
+      ]);
 
-    // The parked home scope restored too, with its decoded id.
-    g2.go(N.home);
-    await tester.pumpAndSettle();
-    expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(),
-        ['home:null', 'profile:p']);
-  });
+      // The parked home scope restored too, with its decoded id.
+      g2.go(N.home);
+      await tester.pumpAndSettle();
+      expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(), [
+        'home:null',
+        'profile:p',
+      ]);
+    },
+  );
 
-  testWidgets('restore truncates above a screen whose codec rejects its token',
-      (tester) async {
-    final g1 = N.graph();
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
-    g1.go(N.profile, 'p'); // home -> profile:p
-    await tester.pumpAndSettle();
-    g1.go(N.review, 'c'); // -> review:c  (review is profile's child)
-    await tester.pumpAndSettle();
-    final snap = g1.toState();
-    // Corrupt review's id token: '' is rejected by Codec.string.
-    ((snap['scopes'] as Map)['home'] as List)[2][1] = '';
+  testWidgets(
+    'restore truncates above a screen whose codec rejects its token',
+    (tester) async {
+      final g1 = N.graph();
+      await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
+      g1.go(N.profile, 'p'); // home -> profile:p
+      await tester.pumpAndSettle();
+      g1.go(N.review, 'c'); // -> review:c  (review is profile's child)
+      await tester.pumpAndSettle();
+      final snap = g1.toState();
+      // Corrupt review's id token: '' is rejected by Codec.string.
+      ((snap['scopes'] as Map)['home'] as List)[2][1] = '';
 
-    final g2 = N.graph();
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: g2.delegate));
-    expect(g2.restore(snap), isTrue);
-    await tester.pumpAndSettle();
-    // review dropped (codec rejected its token); the prefix below survives.
-    expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(),
-        ['home:null', 'profile:p']);
-  });
+      final g2 = N.graph();
+      await tester.pumpWidget(MaterialApp.router(routerDelegate: g2.delegate));
+      expect(g2.restore(snap), isTrue);
+      await tester.pumpAndSettle();
+      // review dropped (codec rejected its token); the prefix below survives.
+      expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(), [
+        'home:null',
+        'profile:p',
+      ]);
+    },
+  );
 
-  testWidgets('restore is best-effort — truncates at an illegal entry',
-      (tester) async {
+  testWidgets('restore is best-effort — truncates at an illegal entry', (
+    tester,
+  ) async {
     final g1 = N.graph();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
     g1.go(N.profile, 'p');
@@ -530,11 +603,15 @@ void main() {
     expect(g2.restore(snap), isTrue);
     await tester.pumpAndSettle();
     // Truncated to the legal prefix; the illegal tail is dropped, no throw.
-    expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(),
-        ['home:null', 'profile:p']);
+    expect(g2.stack.map((e) => '${e.screen.name}:${e.id}').toList(), [
+      'home:null',
+      'profile:p',
+    ]);
   });
 
-  testWidgets('restore rejects a snapshot from a changed graph', (tester) async {
+  testWidgets('restore rejects a snapshot from a changed graph', (
+    tester,
+  ) async {
     final g1 = N.graph();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: g1.delegate));
     final snap = g1.toState();
